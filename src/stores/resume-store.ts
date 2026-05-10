@@ -40,19 +40,21 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
     // Normalize: ensure all items/categories in section content have id fields
     const sections = (resume.sections || []).map((s) => {
       const content = s.content as unknown as Record<string, unknown>;
+      const withStableIds = (value: unknown) => {
+        if (!Array.isArray(value)) return value;
+
+        return value.map((entry) => {
+          if (typeof entry !== 'object' || entry === null) return entry;
+          if ('id' in entry && entry.id) return entry;
+          return { ...entry, id: generateId() };
+        });
+      };
+
       if (Array.isArray(content?.items)) {
-        content.items = (content.items as any[]).map((item) =>
-          typeof item === 'object' && item !== null && !item.id
-            ? { ...item, id: generateId() }
-            : item
-        );
+        content.items = withStableIds(content.items);
       }
       if (Array.isArray(content?.categories)) {
-        content.categories = (content.categories as any[]).map((cat) =>
-          typeof cat === 'object' && cat !== null && !cat.id
-            ? { ...cat, id: generateId() }
-            : cat
-        );
+        content.categories = withStableIds(content.categories);
       }
       return { ...s, content: content as unknown as typeof s.content };
     });
@@ -170,7 +172,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
         ? localStorage.getItem('jade_fingerprint')
         : null;
 
-      await fetch(`/api/resume/${currentResume.id}`, {
+      const response = await fetch(`/api/resume/${currentResume.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -191,9 +193,14 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
         }),
       });
 
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(
+          typeof data?.error === 'string' ? data.error : 'Failed to save resume'
+        );
+      }
+
       set({ isDirty: false });
-    } catch (error) {
-      console.error('Failed to save resume:', error);
     } finally {
       set({ isSaving: false });
     }
@@ -213,7 +220,9 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
 
     const delay = _hydrated ? autoSaveInterval : AUTOSAVE_DELAY;
     const timeout = setTimeout(() => {
-      get().save();
+      void get().save().catch((error) => {
+        console.error('Failed to auto-save resume:', error);
+      });
     }, delay);
 
     set({ _saveTimeout: timeout });

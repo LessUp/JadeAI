@@ -123,6 +123,7 @@
       "saving": "Saving...",
       "unsaved": "Unsaved",
       "save": "Save",
+      "saveError": "Failed to save resume. Please try again.",
       "exportPdf": "Export",
       "exporting": "Exporting...",
       "jdAnalysis": "JD Match",

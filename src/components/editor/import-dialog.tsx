@@ -19,6 +19,8 @@ import {
   AlertCircle,
   FileJson,
 } from 'lucide-react';
+import type { ResumeSection, SectionContent } from '@/types/resume';
+import { generateId } from '@/lib/utils';
 
 interface ImportDialogProps {
   open: boolean;
@@ -27,6 +29,27 @@ interface ImportDialogProps {
 }
 
 type ImportState = 'idle' | 'importing' | 'success' | 'error';
+
+function normalizeImportedSections(
+  sections: Array<Partial<ResumeSection>>,
+  resumeId: string
+): ResumeSection[] {
+  return sections.map((section, index) => {
+    const now = new Date();
+
+    return {
+      id: generateId(),
+      resumeId,
+      type: section.type || 'custom',
+      title: section.title || '',
+      sortOrder: index,
+      visible: section.visible ?? true,
+      content: (section.content || {}) as SectionContent,
+      createdAt: now,
+      updatedAt: now,
+    };
+  });
+}
 
 export function ImportDialog({ open, onOpenChange, resumeId }: ImportDialogProps) {
   const t = useTranslations('import');
@@ -93,12 +116,14 @@ export function ImportDialog({ open, onOpenChange, resumeId }: ImportDialogProps
         throw new Error(t('invalidFormat'));
       }
 
+      const normalizedSections = normalizeImportedSections(data.sections, resumeId);
+
       setResume({
         ...currentResume,
         title: data.title ?? currentResume.title,
         template: data.template ?? currentResume.template,
         themeConfig: data.themeConfig ?? currentResume.themeConfig,
-        sections: data.sections,
+        sections: normalizedSections,
       });
 
       // Mark dirty and save
@@ -107,15 +132,15 @@ export function ImportDialog({ open, onOpenChange, resumeId }: ImportDialogProps
 
       setState('success');
       setTimeout(() => onOpenChange(false), 1500);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setState('error');
       if (err instanceof SyntaxError) {
         setErrorMessage(t('invalidFormat'));
       } else {
-        setErrorMessage(err.message || t('error'));
+        setErrorMessage(err instanceof Error ? err.message : t('error'));
       }
     }
-  }, [selectedFile, currentResume, setResume, save, onOpenChange, t]);
+  }, [selectedFile, currentResume, resumeId, setResume, save, onOpenChange, t]);
 
   const isLoading = state === 'importing';
 

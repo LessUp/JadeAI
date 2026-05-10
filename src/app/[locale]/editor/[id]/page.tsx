@@ -93,7 +93,7 @@ export default function EditorPage({ params }: { params: Promise<{ id: string }>
 
   return (
     <div className="flex h-screen flex-col">
-      <EditorToolbar resumeId={id} />
+      <EditorToolbar />
       <EditorMobileTabBar />
 
       <div className="flex flex-1 overflow-hidden">

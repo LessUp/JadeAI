@@ -16,16 +16,13 @@ import { useResumeStore } from '@/stores/resume-store';
 import { useUIStore } from '@/stores/ui-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { LocaleSwitcher } from '@/components/layout/locale-switcher';
+import { toast } from 'sonner';
 
-interface EditorToolbarProps {
-  resumeId: string;
-}
-
-export function EditorToolbar({ resumeId }: EditorToolbarProps) {
+export function EditorToolbar() {
   const t = useTranslations('editor.toolbar');
   const router = useRouter();
   const { toggleThemeEditor, showThemeEditor, undo, redo, undoStack, redoStack } = useEditorStore();
-  const { isSaving, isDirty, currentResume, sections, reorderSections, save } = useResumeStore();
+  const { isSaving, isDirty, currentResume, reorderSections, save } = useResumeStore();
   const { openModal } = useUIStore();
   const autoSave = useSettingsStore((s) => s.autoSave);
 
@@ -40,6 +37,14 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
     const snapshot = redo();
     if (snapshot) {
       reorderSections(snapshot.sections);
+    }
+  };
+
+  const handleManualSave = async () => {
+    try {
+      await save();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('saveError'));
     }
   };
 
@@ -65,7 +70,7 @@ export function EditorToolbar({ resumeId }: EditorToolbarProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => save()}
+            onClick={() => void handleManualSave()}
             className="cursor-pointer gap-1 text-brand hover:text-brand hover:bg-brand-muted"
           >
             <Save className="h-3.5 w-3.5" />
