@@ -40,7 +40,7 @@ export async function GET(
         return NextResponse.json(resume);
       }
       case 'html': {
-        const html = await generateHtml(resume);
+        const html = await generateHtml(resume, false, request.nextUrl.origin);
         return new NextResponse(html, {
           status: 200,
           headers: {
@@ -71,7 +71,7 @@ export async function GET(
       }
       case 'pdf': {
         const fitOnePage = request.nextUrl.searchParams.get('fitOnePage') === 'true';
-        const pdfHtml = await generateHtml(resume, true);
+        const pdfHtml = await generateHtml(resume, true, request.nextUrl.origin);
         const pdfBuffer = await generatePdf(pdfHtml, { fitOnePage });
         return new NextResponse(new Uint8Array(pdfBuffer), {
           status: 200,

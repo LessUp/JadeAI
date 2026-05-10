@@ -315,6 +315,8 @@
     "accentColor": "Accent Color",
     "typography": "Typography",
     "fontFamily": "Font Family",
+    "customFontStack": "Custom Font Stack",
+    "fontStackHelp": "Use CSS font-family syntax, like VS Code or Vue config. Put your preferred Latin font first, then Chinese fallback fonts.",
     "fontSizeLabel": "Font Size",
     "fontSize": {
       "small": "S",

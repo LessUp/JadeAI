@@ -3,6 +3,7 @@
 import { useId } from 'react';
 import type { Resume, ThemeConfig } from '@/types/resume';
 import { BACKGROUND_TEMPLATES } from '@/lib/constants';
+import { resolveFontStack } from '@/lib/font-stacks';
 import { ClassicTemplate } from './templates/classic';
 import { ModernTemplate } from './templates/modern';
 import { MinimalTemplate } from './templates/minimal';
@@ -156,10 +157,13 @@ function buildThemeCSS(scopeId: string, theme: ThemeConfig, template: string): s
   const m = theme.margin;
   const needsPadding = !BACKGROUND_TEMPLATES.has(template);
   const primaryIsDark = isDark(theme.primaryColor);
+  const fontStack = resolveFontStack(theme.fontFamily);
 
   return `
+    ${s}, ${s} * {
+      font-family: ${fontStack} !important;
+    }
     ${s} > div {
-      font-family: ${theme.fontFamily}, 'Noto Sans SC', sans-serif !important;
       line-height: ${theme.lineSpacing} !important;
       ${needsPadding ? `padding-top: ${m.top}px !important; padding-right: ${m.right}px !important; padding-bottom: ${m.bottom}px !important; padding-left: ${m.left}px !important;` : ''}
       --base-body-size: ${fs.body};
@@ -246,11 +250,6 @@ export function ResumePreview({ resume }: ResumePreviewProps) {
 
   return (
     <>
-      {/* Load the same Google Fonts used in PDF/HTML export so preview renders
-          with identical font metrics (Inter for Latin, Noto Sans SC for CJK). */}
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       <div data-theme-scope={scopeId}>
         <style dangerouslySetInnerHTML={{ __html: buildThemeCSS(scopeId, theme, safeResume.template) }} />
         <Template resume={safeResume} />

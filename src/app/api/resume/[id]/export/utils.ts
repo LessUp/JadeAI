@@ -1,5 +1,6 @@
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { BACKGROUND_TEMPLATES } from '@/lib/constants';
+import { resolveFontStack } from '@/lib/font-stacks';
 import type {
   PersonalInfoContent,
   SkillsContent,
@@ -145,9 +146,12 @@ export function buildExportThemeCSS(theme: typeof DEFAULT_THEME, template: strin
   const sel = '.resume-export';
   const needsPadding = !BACKGROUND_TEMPLATES.has(template);
   const primaryIsDark = isDark(theme.primaryColor);
+  const fontStack = resolveFontStack(theme.fontFamily);
   return `
+    ${sel}, ${sel} * {
+      font-family: ${fontStack} !important;
+    }
     ${sel} > div {
-      font-family: ${theme.fontFamily}, 'Noto Sans SC', sans-serif !important;
       line-height: ${theme.lineSpacing} !important;
       ${needsPadding ? `padding-top: ${m.top}px !important; padding-right: ${m.right}px !important; padding-bottom: ${m.bottom}px !important; padding-left: ${m.left}px !important;` : ''}
       --base-body-size: ${fs.body};

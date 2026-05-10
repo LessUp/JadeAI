@@ -315,6 +315,8 @@
     "accentColor": "强调色",
     "typography": "字体排版",
     "fontFamily": "字体",
+    "customFontStack": "自定义字体栈",
+    "fontStackHelp": "使用 CSS 的 font-family 写法，和 VS Code / Vue 配置习惯一致。把英文主字体写在前面，再写中文回退字体。",
     "fontSizeLabel": "字号",
     "fontSize": {
       "small": "小",

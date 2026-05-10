@@ -1,6 +1,7 @@
 import { esc, buildExportThemeCSS, DEFAULT_THEME, type ResumeWithSections } from './utils';
 import { EXPORT_TAILWIND_CSS } from '@/lib/pdf/export-tailwind-css';
 import { BACKGROUND_TEMPLATES } from '@/lib/constants';
+import { getEmbeddedFontFacesCss } from '@/lib/font-stacks';
 import { generateQrSvg } from '@/lib/qrcode';
 import { buildClassicHtml } from './templates/classic';
 import { buildModernHtml } from './templates/modern';
@@ -161,13 +162,18 @@ async function preGenerateQrSvgs(resume: ResumeWithSections): Promise<void> {
   (qrSection.content as any)._qrSvgs = svgs;
 }
 
-export async function generateHtml(resume: ResumeWithSections, forPdf = false): Promise<string> {
+export async function generateHtml(
+  resume: ResumeWithSections,
+  forPdf = false,
+  fontBaseUrl = ''
+): Promise<string> {
   // Pre-generate QR SVGs so sync template builders can use them
   await preGenerateQrSvgs(resume);
   const builder = TEMPLATE_BUILDERS[resume.template] || buildClassicHtml;
   const bodyHtml = builder(resume);
   const theme = { ...DEFAULT_THEME, ...((resume as any).themeConfig || {}) };
   const themeCSS = buildExportThemeCSS(theme, resume.template);
+  const embeddedFontsCss = getEmbeddedFontFacesCss(fontBaseUrl);
   const isBackground = BACKGROUND_TEMPLATES.has(resume.template);
 
   const fullDarkBg = FULL_DARK_TEMPLATES[resume.template];
@@ -243,10 +249,8 @@ export async function generateHtml(resume: ResumeWithSections, forPdf = false): 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${esc(resume.title)}</title>
   <style>${EXPORT_TAILWIND_CSS}</style>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    ${embeddedFontsCss}
     body { margin: 0; display: flex; justify-content: center; padding: 40px 20px; background: #f4f4f5; min-height: 100vh; }
     @media print { body { padding: 0 !important; background: white !important; } .resume-export > div { box-shadow: none !important; } }
     ${themeCSS}

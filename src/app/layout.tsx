@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { getEmbeddedFontFacesCss } from '@/lib/font-stacks';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -29,6 +30,7 @@ export default function RootLayout({
             __html: `(function(){try{var b=localStorage.getItem('jadeai-brand');if(b==='boss'){b='mint';localStorage.setItem('jadeai-brand','mint');}else if(b==='jade'){b='blue';localStorage.setItem('jadeai-brand','blue');}if(b==='blue'||b==='pink'){document.documentElement.setAttribute('data-brand',b);}}catch(e){}})();`,
           }}
         />
+        <style dangerouslySetInnerHTML={{ __html: getEmbeddedFontFacesCss() }} />
         {children}
       </body>
     </html>

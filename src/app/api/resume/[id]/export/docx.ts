@@ -12,6 +12,7 @@ import type {
 } from '@/types/resume';
 import QRCode from 'qrcode';
 import { type ResumeWithSections, getPersonalInfo, visibleSections, DEFAULT_THEME, safe } from './utils';
+import { resolveDocxFonts } from '@/lib/font-stacks';
 
 // ─── Template style configuration ───────────────────────────
 // Colors + layout style per template. Templates without headerBg
@@ -183,12 +184,13 @@ function resolveTheme(cfg: unknown, template?: string): DocxTheme {
   // Layout styles with smart defaults
   const headingStyle: HeadingStyle = tc?.headingStyle ?? (headerLight ? 'bottom-border' : 'left-border');
   const itemBorder = tc?.itemBorder ?? !headerLight;
+  const docxFonts = resolveDocxFonts(typeof t.fontFamily === 'string' ? t.fontFamily : undefined);
 
   return {
     primary, accent, secondary, headerBg, headerText, headerLight,
     headingStyle, headerAlign: tc?.headerAlign ?? 'center', itemBorder,
-    fontWest: t.fontFamily || 'Calibri',
-    fontEast: 'Microsoft YaHei',
+    fontWest: docxFonts.west,
+    fontEast: docxFonts.east,
     bodySize: fs.body,
     h1Size: fs.h1,
     h2Size: fs.h2,

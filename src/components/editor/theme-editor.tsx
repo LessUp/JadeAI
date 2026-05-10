@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   Palette,
@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/popover';
 import { useResumeStore } from '@/stores/resume-store';
 import { TEMPLATES } from '@/lib/constants';
+import { CODE_NEW_ROMAN_RESOURCE_HAN_STACK, FONT_STACK_OPTIONS } from '@/lib/font-stacks';
 import { templateLabelsMap } from '@/lib/template-labels';
 import { TemplateThumbnail } from '@/components/dashboard/template-thumbnail';
 import { cn } from '@/lib/utils';
@@ -127,14 +128,14 @@ const PRESET_THEMES: PresetTheme[] = [
   },
   {
     id: 'mint',
-    colors: ['#0A1F44', '#00C897', '#F5FBFA', '#334155'],
-    config: {
-      primaryColor: '#0A1F44',
-      accentColor: '#00C897',
-      fontFamily: 'Inter',
-      fontSize: 'medium',
-      lineSpacing: 1.55,
-      margin: { top: 22, right: 22, bottom: 22, left: 22 },
+      colors: ['#0A1F44', '#00C897', '#F5FBFA', '#334155'],
+      config: {
+        primaryColor: '#0A1F44',
+        accentColor: '#00C897',
+        fontFamily: CODE_NEW_ROMAN_RESOURCE_HAN_STACK,
+        fontSize: 'medium',
+        lineSpacing: 1.55,
+        margin: { top: 22, right: 22, bottom: 22, left: 22 },
       sectionSpacing: 15,
     },
   },
@@ -150,18 +151,6 @@ const DEFAULT_THEME: ThemeConfig = {
   sectionSpacing: 16,
   avatarStyle: 'oneInch',
 };
-
-const FONT_OPTIONS = [
-  'Inter',
-  'Georgia',
-  'Helvetica',
-  'Arial',
-  'Palatino',
-  'Verdana',
-  'Times New Roman',
-  'Garamond',
-  'Courier New',
-];
 
 const FONT_SIZE_OPTIONS = [
   { value: 'small', label: '' },
@@ -255,19 +244,18 @@ function ThemeSection({
 
 // -- Main Theme Editor --
 
-interface ThemeEditorProps {
-  onClose?: () => void;
-}
-
-export function ThemeEditor({ onClose }: ThemeEditorProps) {
+export function ThemeEditor() {
   const t = useTranslations('themeEditor');
   const tRoot = useTranslations();
   const { currentResume } = useResumeStore();
 
-  const themeConfig: ThemeConfig = {
-    ...DEFAULT_THEME,
-    ...(currentResume?.themeConfig || {}),
-  };
+  const themeConfig: ThemeConfig = useMemo(
+    () => ({
+      ...DEFAULT_THEME,
+      ...(currentResume?.themeConfig || {}),
+    }),
+    [currentResume?.themeConfig]
+  );
 
   const updateTheme = useCallback(
     (updates: Partial<ThemeConfig>) => {
@@ -434,13 +422,24 @@ export function ThemeEditor({ onClose }: ThemeEditorProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {FONT_OPTIONS.map((font) => (
-                    <SelectItem key={font} value={font}>
-                      <span style={{ fontFamily: font }}>{font}</span>
+                  {FONT_STACK_OPTIONS.map((font) => (
+                    <SelectItem key={font.value} value={font.value}>
+                      <span style={{ fontFamily: font.value }}>{font.label}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-zinc-600 dark:text-zinc-400">{t('customFontStack')}</Label>
+              <Input
+                value={themeConfig.fontFamily}
+                onChange={(e) => updateTheme({ fontFamily: e.target.value })}
+                placeholder={`"CodeNewRoman Nerd Font Mono", "Resource Han Rounded CN", "Noto Sans SC", monospace, sans-serif`}
+                className="text-xs"
+              />
+              <p className="text-[10px] leading-4 text-zinc-400">{t('fontStackHelp')}</p>
             </div>
 
             {/* Font Size */}
