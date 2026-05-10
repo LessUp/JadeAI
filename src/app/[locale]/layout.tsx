@@ -17,8 +17,10 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
   const authEnabled = process.env.AUTH_ENABLED === 'true';
+  const githubRepo = process.env.PUBLIC_GITHUB_REPO || 'LessUp/JadeAI';
+  const siteUrl = (process.env.PUBLIC_SITE_URL || 'https://lessup.github.io/JadeAI').replace(/\/$/, '');
 
-  if (!routing.locales.includes(locale as any)) {
+  if (!routing.locales.includes(locale as (typeof routing.locales)[number])) {
     notFound();
   }
 
@@ -26,23 +28,23 @@ export default async function LocaleLayout({
 
   return (
     <SessionProvider>
-      <RuntimeConfigProvider authEnabled={authEnabled}>
-      <NextIntlClientProvider locale={locale} messages={messages}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <BrandProvider>
-            <TooltipProvider>
-              {children}
-              <Toaster />
-            </TooltipProvider>
-          </BrandProvider>
-        </ThemeProvider>
-      </NextIntlClientProvider>
-    </RuntimeConfigProvider>
+      <RuntimeConfigProvider authEnabled={authEnabled} githubRepo={githubRepo} siteUrl={siteUrl}>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <BrandProvider>
+              <TooltipProvider>
+                {children}
+                <Toaster />
+              </TooltipProvider>
+            </BrandProvider>
+          </ThemeProvider>
+        </NextIntlClientProvider>
+      </RuntimeConfigProvider>
     </SessionProvider>
   );
 }

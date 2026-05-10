@@ -1,6 +1,6 @@
 # 开源了一个 AI 简历生成器 JadeAI：50 套模板、拖拽编辑、AI 对话优化、职业照生成、多格式导出，Docker 一键部署
 
-> GitHub: https://github.com/twwch/JadeAI
+> GitHub: https://github.com/LessUp/JadeAI
 
 大家好，分享一个我最近开源的项目 —— **JadeAI**，一个 AI 驱动的智能简历生成器。
 
@@ -14,13 +14,13 @@
 
 内置 **50 套**专业设计模板，覆盖经典、现代、极简、创意、ATS 友好、北欧风、瑞士风、日式等多种风格，适配不同行业和求职场景。
 
-![模板画廊](https://ladr-1258957911.cos.ap-guangzhou.myqcloud.com/jadeai/images/template-list.png)
+![模板画廊](images/template-list.png)
 
 ### 简历编辑器
 
 拖拽式编辑器，所见即所得。点击任意字段直接编辑，拖拽模块调整顺序，右侧实时预览效果。支持撤销/重做（50 步），自动保存不怕丢数据。
 
-![简历编辑器](https://ladr-1258957911.cos.ap-guangzhou.myqcloud.com/jadeai/images/resume-edit.png)
+![简历编辑器](images/resume-edit.png)
 
 ---
 
@@ -30,13 +30,13 @@
 
 输入你的目标职位、工作年限和核心技能，AI 自动生成一份完整的、结构化的简历。不用对着空白页发愁了。
 
-![AI 填充简历](https://ladr-1258957911.cos.ap-guangzhou.myqcloud.com/jadeai/images/AI%20填充简历.gif)
+![AI 填充简历](images/AI%20填充简历.gif)
 
 ### 2. 图片/PDF 简历解析
 
 手里有一份旧简历的 PDF 或照片？直接上传，AI 自动识别并提取所有内容，填入编辑器。省去手动录入的时间。
 
-![AI 图片简历解析](https://ladr-1258957911.cos.ap-guangzhou.myqcloud.com/jadeai/images/图片简历解析.gif)
+![AI 图片简历解析](images/图片简历解析.gif)
 
 ### 3. AI 对话优化
 
@@ -48,17 +48,17 @@
 
 AI 理解你的简历上下文，给出针对性的建议，并能**直接修改简历内容**。支持多会话和历史记录持久化。
 
-![AI 优化](https://ladr-1258957911.cos.ap-guangzhou.myqcloud.com/jadeai/images/ai%20优化.png)
+![AI 优化](images/ai%20优化.png)
 
 ### 4. 语法与写作检查
 
 一键检测简历中的弱动词、模糊描述、语法错误，给出质量评分和逐条修改建议。
 
-![AI 语法检查](https://ladr-1258957911.cos.ap-guangzhou.myqcloud.com/jadeai/images/AI%20语法检查.png)
+![AI 语法检查](images/AI%20语法检查.png)
 
 发现问题后，可以**一键应用修复**，不用手动逐个改：
 
-![语法一键修复](https://ladr-1258957911.cos.ap-guangzhou.myqcloud.com/jadeai/images/AI%20语法检查一键修复.png)
+![语法一键修复](images/AI%20语法检查一键修复.png)
 
 ### 5. JD 匹配分析
 
@@ -71,19 +71,19 @@ AI 理解你的简历上下文，给出针对性的建议，并能**直接修改
 
 帮你把简历调整到和目标岗位高度匹配。
 
-![JD 匹配分析](https://ladr-1258957911.cos.ap-guangzhou.myqcloud.com/jadeai/images/JD%20匹配分析.png)
+![JD 匹配分析](images/JD%20匹配分析.png)
 
 ### 6. AI 职业照生成
 
 简历需要一张专业的证件照？不用去照相馆了。上传一张普通照片，AI 自动生成职业风格的证件照，可选择不同尺寸和背景样式，生成后直接下载使用。
 
-![AI 职业照生成](https://ladr-1258957911.cos.ap-guangzhou.myqcloud.com/jadeai/images/职业照生成.png)
+![AI 职业照生成](images/职业照生成.png)
 
 ### 7. 二维码名片模块
 
 简历里可以添加二维码模块，自动为你的个人网站、GitHub、LinkedIn 等链接生成二维码。HR 扫码即可直达你的在线主页或作品集，让纸质简历也能链接到线上内容。
 
-![二维码模块](https://ladr-1258957911.cos.ap-guangzhou.myqcloud.com/jadeai/images/二维码.png)
+![二维码模块](images/二维码.png)
 
 ### 8. 更多 AI 能力
 
@@ -98,17 +98,17 @@ AI 理解你的简历上下文，给出针对性的建议，并能**直接修改
 
 还支持 **JSON 导入**：之前导出的 JSON 文件可以重新导入还原简历，方便在不同设备间迁移数据。
 
-![多格式导出](https://ladr-1258957911.cos.ap-guangzhou.myqcloud.com/jadeai/images/多项导出.png)
+![多格式导出](images/多项导出.png)
 
 ### 10. 链接分享
 
 生成一个分享链接，可以直接发给 HR 或朋友查看你的在线简历。支持密码保护和浏览次数统计。
 
-![创建分享链接](https://ladr-1258957911.cos.ap-guangzhou.myqcloud.com/jadeai/images/创建分享链接.png)
+![创建分享链接](images/创建分享链接.png)
 
 分享出去的简历页面长这样，干净专业：
 
-![简历分享页](https://ladr-1258957911.cos.ap-guangzhou.myqcloud.com/jadeai/images/简历分享页.png)
+![简历分享页](images/简历分享页.png)
 
 ---
 
@@ -195,10 +195,12 @@ src/
 ### Docker 一行命令
 
 ```bash
+docker build -t jadeai-local:latest .
+
 docker run -d -p 3000:3000 \
   -e AUTH_SECRET=$(openssl rand -base64 32) \
   -v jadeai-data:/app/data \
-  twwch/jadeai:latest
+  jadeai-local:latest
 ```
 
 打开 `http://localhost:3000`，首次启动自动完成数据库迁移和初始化。
@@ -218,7 +220,7 @@ docker run -d -p 3000:3000 \
 ### 本地开发
 
 ```bash
-git clone https://github.com/twwch/JadeAI.git
+git clone https://github.com/LessUp/JadeAI.git
 cd JadeAI
 pnpm install
 cp .env.example .env.local
@@ -283,7 +285,7 @@ pnpm dev
 
 项目完全开源，Apache 2.0 协议。如果觉得有用，欢迎 Star 支持一下：
 
-**GitHub: https://github.com/twwch/JadeAI**
+**GitHub: https://github.com/LessUp/JadeAI**
 
 有问题或建议欢迎提 Issue，也欢迎 PR 贡献代码。
 

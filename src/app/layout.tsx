@@ -5,8 +5,10 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 const appName = process.env.APP_NAME || 'JadeAI';
+const siteUrl = (process.env.PUBLIC_SITE_URL || 'https://lessup.github.io/JadeAI').replace(/\/$/, '');
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: `${appName} - AI Resume Builder`,
   description: 'AI-powered intelligent resume builder with drag-and-drop editor',
   icons: {

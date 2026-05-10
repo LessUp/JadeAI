@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRuntimeConfig } from '@/components/providers/runtime-config-provider';
 import {
   Sparkles,
   Layout,
@@ -15,7 +16,6 @@ import {
   Mic,
   Upload,
   Download,
-  type LucideIcon,
 } from 'lucide-react';
 
 const FEATURES = [
@@ -182,6 +182,9 @@ function DemoExport() {
 }
 
 function DemoSharing() {
+  const { siteUrl } = useRuntimeConfig();
+  const demoShareUrl = `${siteUrl.replace(/^https?:\/\//, '')}/share/a3f8k2...`;
+
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
       {/* URL bar */}
@@ -191,7 +194,7 @@ function DemoSharing() {
       >
         <Share2 className="h-4 w-4 shrink-0 text-zinc-400" />
         <span className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-          jadeai.app/share/a3f8k2...
+          {demoShareUrl}
         </span>
         <span
           className="ml-auto shrink-0 rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-600 dark:bg-green-950 dark:text-green-400"

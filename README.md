@@ -10,13 +10,16 @@ Build professional resumes with drag-and-drop editing, real-time AI optimization
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61dafb)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)](https://www.typescriptlang.org/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ed)](https://hub.docker.com/r/twwch/jadeai)
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-222?logo=githubpages)](https://lessup.github.io/JadeAI)
 
 [中文文档](./README.zh-CN.md)
 
 </div>
 
 ---
+
+> Fork homepage: https://lessup.github.io/JadeAI  
+> This repository's GitHub Pages site is a static project homepage. The full app still requires a server runtime for API routes, auth, database access, and export features.
 
 ## Community
 
@@ -193,10 +196,12 @@ The following resume sections support Markdown syntax:
 # Generate a secret key first
 openssl rand -base64 32
 
+docker build -t jadeai-local:latest .
+
 docker run -d -p 3000:3000 \
   -e AUTH_SECRET=<your-generated-secret> \
   -v jadeai-data:/app/data \
-  twwch/jadeai:latest
+  jadeai-local:latest
 ```
 
 Open [http://localhost:3000](http://localhost:3000). Database auto-migrates and seeds on first start.
@@ -209,11 +214,13 @@ Open [http://localhost:3000](http://localhost:3000). Database auto-migrates and 
 <summary>With PostgreSQL</summary>
 
 ```bash
+docker build -t jadeai-local:latest .
+
 docker run -d -p 3000:3000 \
   -e AUTH_SECRET=<your-generated-secret> \
   -e DB_TYPE=postgresql \
   -e DATABASE_URL=postgresql://user:pass@host:5432/jadeai \
-  twwch/jadeai:latest
+  jadeai-local:latest
 ```
 
 </details>
@@ -222,13 +229,15 @@ docker run -d -p 3000:3000 \
 <summary>With Google OAuth</summary>
 
 ```bash
+docker build -t jadeai-local:latest .
+
 docker run -d -p 3000:3000 \
   -e AUTH_ENABLED=true \
   -e AUTH_SECRET=your-secret \
   -e GOOGLE_CLIENT_ID=xxx \
   -e GOOGLE_CLIENT_SECRET=xxx \
   -v jadeai-data:/app/data \
-  twwch/jadeai:latest
+  jadeai-local:latest
 ```
 
 </details>
@@ -243,7 +252,7 @@ docker run -d -p 3000:3000 \
 #### Installation
 
 ```bash
-git clone https://github.com/twwch/JadeAI.git
+git clone https://github.com/LessUp/JadeAI.git
 cd JadeAI
 
 pnpm install
@@ -294,6 +303,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `GOOGLE_CLIENT_ID` | When OAuth | — | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | When OAuth | — | Google OAuth client secret |
 | `APP_NAME` | No | `JadeAI` | Application display name |
+| `PUBLIC_GITHUB_REPO` | No | `LessUp/JadeAI` | GitHub repository shown in the landing page |
+| `PUBLIC_SITE_URL` | No | `https://lessup.github.io/JadeAI` | Public homepage URL used in metadata and landing-page demos |
 | `DEFAULT_LOCALE` | No | `zh` | Default language: `zh` or `en` |
 
 ## Scripts
@@ -476,7 +487,7 @@ PDF export uses Puppeteer Core with @sparticuz/chromium. Each of the 50 template
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=twwch/JadeAI&type=date&legend=top-left)](https://www.star-history.com/#twwch/JadeAI&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/svg?repos=LessUp/JadeAI&type=date&legend=top-left)](https://www.star-history.com/#LessUp/JadeAI&type=date&legend=top-left)
 
 ## License
 

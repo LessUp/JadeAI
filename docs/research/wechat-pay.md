@@ -67,7 +67,7 @@
 
 ### 2.5 域名与回调
 
-- **支付结果通知 URL**：必须是 **HTTPS** 公网可访问，例如 `https://jadeai.app/api/payment/wechat/notify`
+- **支付结果通知 URL**：必须是 **HTTPS** 公网可访问，例如 `https://your-app.example.com/api/payment/wechat/notify`
 - 域名需要能备案（大陆服务器）或境外可访问
 - 微信会 POST 加密回调，必须 **5 秒内返回 `{"code":"SUCCESS","message":"成功"}`**，否则最多重试 15 次
 
@@ -86,7 +86,7 @@
      appid, mchid,
      description: "JadeAI Pro 会员-月",
      out_trade_no: "本地订单号(唯一)",
-     notify_url: "https://jadeai.app/api/payment/wechat/notify",
+     notify_url: "https://your-app.example.com/api/payment/wechat/notify",
      amount: { total: 3000, currency: "CNY" }   // 单位：分
    }
    ← 返回 { code_url: "weixin://wxpay/bizpayurl?pr=..." }

@@ -10,13 +10,16 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61dafb)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)](https://www.typescriptlang.org/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ed)](https://hub.docker.com/r/twwch/jadeai)
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-222?logo=githubpages)](https://lessup.github.io/JadeAI)
 
 [English](./README.md)
 
 </div>
 
 ---
+
+> Fork 首页：https://lessup.github.io/JadeAI  
+> 这个仓库的 GitHub Pages 只承担项目主页/说明文档。完整应用仍然需要服务端运行环境来支持 API、认证、数据库和导出功能。
 
 ## 交流群
 
@@ -202,10 +205,12 @@
 # 先生成一个密钥
 openssl rand -base64 32
 
+docker build -t jadeai-local:latest .
+
 docker run -d -p 3000:3000 \
   -e AUTH_SECRET=<你生成的密钥> \
   -v jadeai-data:/app/data \
-  twwch/jadeai:latest
+  jadeai-local:latest
 ```
 
 打开 [http://localhost:3000](http://localhost:3000)。首次启动自动完成数据库迁移和数据初始化。
@@ -218,11 +223,13 @@ docker run -d -p 3000:3000 \
 <summary>使用 PostgreSQL</summary>
 
 ```bash
+docker build -t jadeai-local:latest .
+
 docker run -d -p 3000:3000 \
   -e AUTH_SECRET=<你生成的密钥> \
   -e DB_TYPE=postgresql \
   -e DATABASE_URL=postgresql://user:pass@host:5432/jadeai \
-  twwch/jadeai:latest
+  jadeai-local:latest
 ```
 
 </details>
@@ -231,13 +238,15 @@ docker run -d -p 3000:3000 \
 <summary>使用 Google OAuth 登录</summary>
 
 ```bash
+docker build -t jadeai-local:latest .
+
 docker run -d -p 3000:3000 \
   -e AUTH_ENABLED=true \
   -e AUTH_SECRET=your-secret \
   -e GOOGLE_CLIENT_ID=xxx \
   -e GOOGLE_CLIENT_SECRET=xxx \
   -v jadeai-data:/app/data \
-  twwch/jadeai:latest
+  jadeai-local:latest
 ```
 
 </details>
@@ -252,7 +261,7 @@ docker run -d -p 3000:3000 \
 #### 安装
 
 ```bash
-git clone https://github.com/twwch/JadeAI.git
+git clone https://github.com/LessUp/JadeAI.git
 cd JadeAI
 
 pnpm install
@@ -303,6 +312,8 @@ pnpm dev
 | `GOOGLE_CLIENT_ID` | OAuth 时 | — | Google OAuth 客户端 ID |
 | `GOOGLE_CLIENT_SECRET` | OAuth 时 | — | Google OAuth 客户端密钥 |
 | `APP_NAME` | 否 | `JadeAI` | 应用显示名称 |
+| `PUBLIC_GITHUB_REPO` | 否 | `LessUp/JadeAI` | 落地页展示的 GitHub 仓库 |
+| `PUBLIC_SITE_URL` | 否 | `https://lessup.github.io/JadeAI` | 元数据和落地页演示使用的公开主页地址 |
 | `DEFAULT_LOCALE` | 否 | `zh` | 默认语言：`zh` 或 `en` |
 
 ## 常用命令
@@ -485,7 +496,7 @@ PDF 导出使用 Puppeteer Core + @sparticuz/chromium。50 套模板各有独立
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=twwch/JadeAI&type=date&legend=top-left)](https://www.star-history.com/#twwch/JadeAI&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/svg?repos=LessUp/JadeAI&type=date&legend=top-left)](https://www.star-history.com/#LessUp/JadeAI&type=date&legend=top-left)
 
 ## 许可证
 

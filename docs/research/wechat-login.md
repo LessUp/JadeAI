@@ -34,7 +34,7 @@
 认证通过后，在开放平台 → 管理中心 → 网站应用 → 创建应用：
 - **应用名称 / 图标 / 简介**
 - **官网地址**：必须是已备案的域名（中国大陆服务器需 ICP 备案；境外服务器可以用境外域名，但微信审核偏好备案域名）
-- **授权回调域**：填一个主域名，例如 `jadeai.app`，微信只校验"域名"不校验完整 URL。回调路径由我们自己定（如 `/api/auth/callback/wechat`）
+- **授权回调域**：填你自己的主域名，例如 `your-app.example.com`，微信只校验"域名"不校验完整 URL。回调路径由我们自己定（如 `/api/auth/callback/wechat`）
 - 审核：7 个工作日左右
 - 审核通过后拿到：
   - `AppID`（公开）
@@ -53,14 +53,14 @@
 1. 前端点击"微信登录"
    → 跳 https://open.weixin.qq.com/connect/qrconnect
        ?appid=APPID
-       &redirect_uri=URLENCODE(https://jadeai.app/api/auth/callback/wechat)
+       &redirect_uri=URLENCODE(https://your-app.example.com/api/auth/callback/wechat)
        &response_type=code
        &scope=snsapi_login          ← 网站应用固定这个 scope
        &state=RANDOM_CSRF_TOKEN
        #wechat_redirect
 
 2. 用户扫码确认 → 微信回跳
-   → https://jadeai.app/api/auth/callback/wechat?code=CODE&state=...
+   → https://your-app.example.com/api/auth/callback/wechat?code=CODE&state=...
 
 3. 后端用 code 换 access_token
    GET https://api.weixin.qq.com/sns/oauth2/access_token

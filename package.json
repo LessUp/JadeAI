@@ -2,6 +2,14 @@
   "name": "jadeai",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://lessup.github.io/JadeAI",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LessUp/JadeAI.git"
+  },
+  "bugs": {
+    "url": "https://github.com/LessUp/JadeAI/issues"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build:export-css": "tsx scripts/build-export-css.ts",

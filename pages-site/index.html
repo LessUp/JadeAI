@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JadeAI Fork Homepage</title>
+    <meta
+      name="description"
+      content="LessUp/JadeAI 的 GitHub Pages 首页，用于区分 fork 仓库与上游发布渠道。"
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0a0a0a;
+        --card: rgba(24, 24, 27, 0.84);
+        --text: #f4f4f5;
+        --muted: #a1a1aa;
+        --accent: #10b981;
+        --accent-hover: #059669;
+        --border: rgba(255, 255, 255, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background:
+          radial-gradient(circle at top, rgba(16, 185, 129, 0.18), transparent 30%),
+          linear-gradient(180deg, #09090b 0%, #111827 100%);
+        color: var(--text);
+      }
+
+      main {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .card {
+        width: min(760px, 100%);
+        padding: 32px;
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        background: var(--card);
+        backdrop-filter: blur(16px);
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(16, 185, 129, 0.12);
+        color: #a7f3d0;
+        font-size: 14px;
+      }
+
+      h1 {
+        margin: 20px 0 12px;
+        font-size: clamp(32px, 5vw, 48px);
+        line-height: 1.05;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.7;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 28px;
+      }
+
+      a.button,
+      a.link {
+        text-decoration: none;
+        transition:
+          transform 160ms ease,
+          background 160ms ease,
+          border-color 160ms ease;
+      }
+
+      a.button {
+        padding: 12px 18px;
+        border-radius: 12px;
+        background: var(--accent);
+        color: white;
+        font-weight: 600;
+      }
+
+      a.button:hover {
+        transform: translateY(-1px);
+        background: var(--accent-hover);
+      }
+
+      a.link {
+        padding: 12px 18px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+
+      a.link:hover {
+        transform: translateY(-1px);
+        border-color: rgba(255, 255, 255, 0.18);
+      }
+
+      .note {
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+        font-size: 14px;
+      }
+
+      code {
+        font-family:
+          ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        color: #d1fae5;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="card">
+        <div class="eyebrow">GitHub Pages · LessUp/JadeAI</div>
+        <h1>JadeAI fork homepage</h1>
+        <p>
+          这个 Pages 站点只负责承载当前 fork 的公开主页，避免继续沿用上游仓库的自定义域名、
+          Docker 发布地址和仓库入口。
+        </p>
+        <div class="actions">
+          <a class="button" href="https://github.com/LessUp/JadeAI">查看仓库</a>
+          <a class="link" href="https://github.com/LessUp/JadeAI/blob/main/README.zh-CN.md">中文说明</a>
+          <a class="link" href="https://github.com/LessUp/JadeAI/blob/main/README.md">English README</a>
+          <a class="link" href="https://github.com/LessUp/JadeAI/issues">Issues</a>
+        </div>
+        <p class="note">
+          完整应用仍需服务器环境运行；GitHub Pages 只适合静态主页。若要本地体验，先执行
+          <code>docker build -t jadeai-local:latest .</code>，再运行
+          <code>docker run -d -p 3000:3000 -e AUTH_SECRET=&lt;secret&gt; -v jadeai-data:/app/data jadeai-local:latest</code>。
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
