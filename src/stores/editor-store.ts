@@ -1,7 +1,10 @@
 import { create } from 'zustand';
-import type { ResumeSection } from '@/types/resume';
-import type { ResumeSnapshot } from '@/types/editor';
+import type { ResumeDraftSnapshot, ResumeSnapshot, ResumeVersionSource } from '@/types/editor';
 import { MAX_UNDO_STACK } from '@/lib/constants';
+import {
+  areResumeDraftSnapshotsEqual,
+  cloneResumeDraftSnapshot,
+} from '@/lib/editor/resume-draft';
 
 interface EditorStore {
   selectedSectionId: string | null;
@@ -22,12 +25,23 @@ interface EditorStore {
   setShowAiChat: (show: boolean) => void;
   toggleThemeEditor: () => void;
   setZoom: (zoom: number) => void;
-  pushSnapshot: (sections: ResumeSection[]) => void;
-  undo: () => ResumeSnapshot | null;
-  redo: () => ResumeSnapshot | null;
+  pushSnapshot: (draft: ResumeDraftSnapshot, source?: ResumeVersionSource) => void;
+  undo: (currentDraft: ResumeDraftSnapshot | null) => ResumeSnapshot | null;
+  redo: (currentDraft: ResumeDraftSnapshot | null) => ResumeSnapshot | null;
   setPendingAiMessage: (message: string | null) => void;
   setMobileActiveTab: (tab: "edit" | "preview") => void;
   reset: () => void;
+}
+
+function createSnapshot(
+  draft: ResumeDraftSnapshot,
+  source?: ResumeVersionSource
+): ResumeSnapshot {
+  return {
+    draft: cloneResumeDraftSnapshot(draft),
+    timestamp: Date.now(),
+    source,
+  };
 }
 
 export const useEditorStore = create<EditorStore>((set, get) => ({
@@ -50,34 +64,49 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   toggleThemeEditor: () => set((s) => ({ showThemeEditor: !s.showThemeEditor })),
   setZoom: (zoom) => set({ zoom }),
 
-  pushSnapshot: (sections) => {
+  pushSnapshot: (draft, source) => {
     set((state) => ({
-      undoStack: [
-        ...state.undoStack.slice(-MAX_UNDO_STACK + 1),
-        { sections, timestamp: Date.now() },
-      ],
-      redoStack: [],
+      ...(state.undoStack.at(-1) &&
+      areResumeDraftSnapshotsEqual(state.undoStack.at(-1)!.draft, draft)
+        ? {}
+        : {
+            undoStack: [
+              ...state.undoStack.slice(-MAX_UNDO_STACK + 1),
+              createSnapshot(draft, source),
+            ],
+            redoStack: [],
+          }),
     }));
   },
 
-  undo: () => {
+  undo: (currentDraft) => {
+    if (!currentDraft) return null;
     const { undoStack } = get();
     if (undoStack.length === 0) return null;
+
     const snapshot = undoStack[undoStack.length - 1];
     set((state) => ({
       undoStack: state.undoStack.slice(0, -1),
-      redoStack: [...state.redoStack, snapshot],
+      redoStack: [
+        ...state.redoStack.slice(-MAX_UNDO_STACK + 1),
+        createSnapshot(currentDraft, snapshot.source),
+      ],
     }));
     return snapshot;
   },
 
-  redo: () => {
+  redo: (currentDraft) => {
+    if (!currentDraft) return null;
     const { redoStack } = get();
     if (redoStack.length === 0) return null;
+
     const snapshot = redoStack[redoStack.length - 1];
     set((state) => ({
       redoStack: state.redoStack.slice(0, -1),
-      undoStack: [...state.undoStack, snapshot],
+      undoStack: [
+        ...state.undoStack.slice(-MAX_UNDO_STACK + 1),
+        createSnapshot(currentDraft, snapshot.source),
+      ],
     }));
     return snapshot;
   },

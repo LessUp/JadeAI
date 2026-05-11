@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
+import type { ResumeSection } from '@/types/resume';
+
+type IncomingSection = Pick<ResumeSection, 'id' | 'type' | 'title' | 'sortOrder' | 'visible' | 'content'>;
 
 export async function GET(
   request: NextRequest,
@@ -50,22 +53,24 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { title, template, themeConfig, sections } = body;
+    const { title, template, themeConfig, language, sections } = body;
 
     // Update resume metadata
-    if (title || template || themeConfig) {
+    if (title || template || themeConfig || language) {
       await resumeRepository.update(id, {
         ...(title && { title }),
         ...(template && { template }),
         ...(themeConfig && { themeConfig }),
+        ...(language && { language }),
       });
     }
 
     // Sync sections: create new, update existing, delete removed
     if (sections && Array.isArray(sections)) {
-      const existingSections = resume.sections || [];
-      const existingIds = new Set(existingSections.map((s: any) => s.id));
-      const incomingIds = new Set(sections.map((s: any) => s.id));
+      const existingSections = (resume.sections || []) as ResumeSection[];
+      const incomingSections = sections as IncomingSection[];
+      const existingIds = new Set(existingSections.map((s) => s.id));
+      const incomingIds = new Set(incomingSections.map((s) => s.id));
 
       // Delete sections that were removed by the user
       for (const existing of existingSections) {
@@ -74,7 +79,7 @@ export async function PUT(
         }
       }
 
-      for (const section of sections) {
+      for (const section of incomingSections) {
         if (existingIds.has(section.id)) {
           // Update existing section
           await resumeRepository.updateSection(section.id, {

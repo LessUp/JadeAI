@@ -2,9 +2,9 @@
 
 # JadeAI
 
-**AI-Powered Smart Resume Builder**
+**AI 驱动的简历与求职工作台**
 
-Build professional resumes with drag-and-drop editing, real-time AI optimization, 50 templates, and multi-format export.
+拖拽编辑、AI 优化、版本历史、模拟面试、多格式导出，一站式完成简历制作与求职准备。
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
@@ -12,244 +12,98 @@ Build professional resumes with drag-and-drop editing, real-time AI optimization
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)](https://www.typescriptlang.org/)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-222?logo=githubpages)](https://lessup.github.io/JadeAI)
 
-[中文文档](./README.zh-CN.md)
+[English](./README.en.md) · [更新日志](./changelog/)
 
 </div>
 
 ---
 
-> Fork homepage: https://lessup.github.io/JadeAI  
-> This repository's GitHub Pages site is a static project homepage. The full app still requires a server runtime for API routes, auth, database access, and export features.
+> 仓库首页：https://lessup.github.io/JadeAI  
+> GitHub Pages 只承载项目主页与说明文档；完整应用需要服务端运行环境来支持 API、认证、数据库和导出能力。
 
-## Community
+## JadeAI 是什么
 
-Join our groups for discussion and support:
+JadeAI 是一个面向简历编辑、AI 优化和求职准备的全栈应用。它把传统“文档编辑器 + 模板网站 + AI 工具”的体验整合成一个工作流：
 
-[![Linux.do](https://img.shields.io/badge/Linux.do-Community-blue)](https://linux.do/)
+- 在可视化画布里拖拽、编辑、排序简历模块
+- 用 AI 生成内容、润色经历、分析 JD、翻译简历、生成求职信
+- 在模拟面试里按岗位要求练习，并生成评估报告
+- 导出 PDF / DOCX / HTML / TXT / JSON，或生成分享链接
 
+## 核心能力
 
-## Recent Updates
+### 简历编辑
 
-### v0.3.4 · Brand Color System & Theme Switching
-- Introduced semantic `--brand-*` CSS tokens; replaced hardcoded `pink-*` across 60+ files
-- New brand switcher in the user menu with three presets: **Mint** (default), **Blue**, **Pink**
-- SSR-safe anti-flicker hydration; legacy values auto-migrated via `localStorage`
-- Added a Mint resume preset to the theme editor
-- Export pipelines (PDF / HTML / DOCX) now read from `src/lib/brand-constants.ts`
+- **拖拽式编辑器**：模块、条目与顺序可直接调整
+- **50 套模板**：覆盖通用、创意、技术、金融、学术等风格
+- **主题定制**：颜色、字体、间距、页边距实时预览
+- **Markdown 支持**：摘要、经历、项目等文本支持 Markdown 排版
+- **多简历管理**：支持创建、复制、重命名、搜索和排序
 
-### v0.3.3 · Mobile Experience & Interview Report Stability
-- Mobile-friendly template preview and bottom action bars for preview/share pages
-- Fixed mobile scroll: canvas/preview roots use `h-full` instead of `flex-1`
-- Improved stability of interview report generation
+### AI 求职能力
 
-### v0.3.2 · Runtime Environment Variables
-- Removed all `NEXT_PUBLIC_*` build-time variables in favor of runtime env
+- **AI 聊天助手**：在编辑器中对话式修改简历
+- **AI 生成简历**：根据职位、技能和经历快速生成初稿
+- **AI 简历解析**：上传 PDF / 图片自动抽取内容
+- **JD 匹配分析**：关键词匹配、ATS 分析与改进建议
+- **语法与写作检查**：识别弱表达、语法问题与可优化内容
+- **多语言翻译**：跨语言转换并保留技术术语
+- **AI 求职信**：结合简历和 JD 生成定制求职信
 
-### v0.3.1 · Auth Runtime Flag
-- Changed `NEXT_PUBLIC_AUTH_ENABLED` to runtime `AUTH_ENABLED`
+### 版本与恢复
 
-## Screenshots
+- **完整草稿级撤销 / 重做**：覆盖标题、模板、主题、语言和模块内容
+- **本地版本历史**：自动保存后保留浏览器本地版本记录
+- **历史恢复**：可以从本地版本列表中恢复到先前状态
 
-| Template Gallery | Resume Editor |
-|:---:|:---:|
-| ![Template Gallery](images/template-list.png) | ![Resume Editor](images/resume-edit.png) |
+### 模拟面试
 
-| AI Resume Generation | AI Resume Parsing (Image) |
-|:---:|:---:|
-| ![AI Resume Generation](images/AI%20填充简历.gif) | ![AI Resume Parsing](images/图片简历解析.gif) |
+- **基于 JD 的面试模拟**：按岗位描述生成面试流程
+- **多角色面试官**：HR、技术、行为、项目深挖、Leader 等
+- **追问与提示**：根据回答质量动态追问
+- **面试报告**：评分、维度分析、建议与导出
 
-| AI Optimization | Grammar Check |
-|:---:|:---:|
-| ![AI Optimization](images/ai%20优化.png) | ![Grammar Check](images/AI%20语法检查.png) |
+### 导出与分享
 
-| Grammar Auto-Fix | JD Match Analysis |
-|:---:|:---:|
-| ![Grammar Auto-Fix](images/AI%20语法检查一键修复.png) | ![JD Match Analysis](images/JD%20匹配分析.png) |
+- **多格式导出**：PDF、智能一页 PDF、DOCX、HTML、TXT、JSON
+- **JSON 导入**：可恢复现有简历或创建新简历
+- **分享链接**：支持密码保护与访问统计
 
-| Multi-Format Export | Share Link |
-|:---:|:---:|
-| ![Multi-Format Export](images/多项导出.png) | ![Share Link](images/创建分享链接.png) |
+## 技术栈
 
-| Shared Resume Page | AI Professional Photo |
-|:---:|:---:|
-| ![Shared Resume Page](images/简历分享页.png) | ![AI Professional Photo](images/职业照生成.png) |
+| 层 | 技术 |
+|---|---|
+| 前端 | Next.js 16、React 19、Tailwind CSS 4、shadcn/ui、Radix UI |
+| 状态管理 | Zustand |
+| AI | Vercel AI SDK v6、OpenAI、Anthropic |
+| 数据库 | Drizzle ORM、SQLite / PostgreSQL |
+| 认证 | NextAuth.js v5、FingerprintJS |
+| 导出 | Puppeteer Core、Chromium、DOCX |
+| 国际化 | next-intl |
 
-| QR Code Section |
-|:---:|
-| ![QR Code Section](images/二维码.png) |
+## 快速开始
 
-| Interview Setup | Mock Interview |
-|:---:|:---:|
-| ![Interview Setup](images/新建面试.png) | ![Mock Interview](images/模拟面试.png) |
-
-| Interview List | Interview Report |
-|:---:|:---:|
-| ![Interview List](images/面试列表.png) | ![Interview Report](images/面试报告.png) |
-
-## Deployment Video
-
-Watch the full deployment walkthrough on Bilibili:
-
-[![Deployment Video](https://i0.hdslb.com/bfs/archive/deployment-preview.jpg)](https://www.bilibili.com/video/BV1h7wQzSEYe/)
-
-> [Watch on Bilibili →](https://www.bilibili.com/video/BV1h7wQzSEYe/)
-
-## Features
-
-### Resume Editing
-
-- **Drag & Drop Editor** — Visually arrange and reorder resume sections and items
-- **Inline Editing** — Click any field to edit directly on the canvas
-- **50 Professional Templates** — Classic, Modern, Minimal, Creative, ATS-Friendly, Timeline, Nordic, Swiss, and more
-- **Theme Customization** — Colors, fonts, spacing, and margins with live preview
-- **Undo / Redo** — Full edit history (up to 50 steps)
-- **Auto Save** — Configurable interval (0.3s–5s), with manual save option
-- **Markdown Support** — Use Markdown syntax in text fields to format content (e.g., `**bold**` for **bold text**)
-
-### Markdown Formatting
-
-The following resume sections support Markdown syntax:
-
-| Section | Supported Fields |
-|---------|-----------------|
-| Summary | Content text |
-| Work Experience | Description, Highlights |
-| Education | Highlights |
-| Projects | Description, Highlights |
-| Custom Section | Description |
-| Languages | Description |
-| GitHub | Description |
-
-**Supported syntax:**
-
-```
-**bold text**    → bold
-`code text`      → inline code
-- item           → bullet list
-```
-
-> Skills, Certifications, and Personal Info fields do not support Markdown.
-
-### AI Capabilities
-
-- **AI Chat Assistant** — Conversational AI integrated in the editor, with multi-session support and persistent history
-- **AI Resume Generation** — Generate a complete resume from job title, experience, and skills
-- **Resume Parsing** — Upload an existing PDF or image, AI extracts all content automatically
-- **JD Match Analysis** — Compare resume against a job description: keyword matching, ATS score, and improvement suggestions
-- **Cover Letter Generation** — AI-tailored cover letter based on resume and JD, with tone selection (formal / friendly / confident)
-- **Grammar & Writing Check** — Detect weak verbs, vague descriptions, and grammar issues; returns a quality score
-- **Translation** — Translate resume content across 10 languages while preserving technical terms
-- **Flexible AI Provider** — Supports OpenAI, Anthropic, and custom API endpoints; each user configures their own key in-app
-
-### Mock Interview
-
-- **JD-Based Interview Simulation** — Paste a job description, AI plays different interviewer roles in sequence
-- **6 Preset Interviewers** — HR, Technical, Scenario, Behavioral, Project Deep Dive, Leader — each with unique personality and questioning style
-- **Custom Interviewers** — Create your own interviewer with custom focus areas and style
-- **Smart Follow-ups** — AI adapts questions based on answer quality, probing deeper when needed
-- **Interview Controls** — Skip questions, request hints, mark for review, pause/resume
-- **Detailed Report** — Per-question scoring, competency radar chart, improvement plan with resources
-- **History Comparison** — Track score trends and dimension progress across interviews
-- **PDF & Markdown Export** — Export interview reports for offline review
-
-### Export & Sharing
-
-- **Multi-Format Export** — PDF (Puppeteer + Chromium), Smart One-Page PDF (auto-fit to single page), DOCX, HTML, TXT, JSON
-- **JSON Import** — Import a previously exported JSON file to restore or create a resume; supported both in the editor (overwrite current) and on the dashboard (create new)
-- **Link Sharing** — Token-based shareable links with optional password protection
-- **View Counter** — Track how many times a shared resume has been viewed
-
-### Management
-
-- **Multi-Resume Dashboard** — Grid and list views, search, sort (by date, name)
-- **Import from JSON** — Create a new resume from a JSON export directly on the dashboard
-- **Duplicate & Rename** — Quick resume management actions
-- **Interactive Tours** — Step-by-step onboarding for first-time users
-
-### Other
-
-- **Bilingual UI** — Full Chinese (zh) and English (en) interface
-- **Dark Mode** — Light, dark, and system theme support
-- **Flexible Auth** — Google OAuth or browser fingerprint (zero-config)
-- **Dual Database** — SQLite (default, zero-config) or PostgreSQL
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16 (App Router, Turbopack) |
-| UI | React 19, Tailwind CSS 4, shadcn/ui, Radix UI |
-| Drag & Drop | @dnd-kit |
-| State | Zustand |
-| Database | Drizzle ORM (SQLite / PostgreSQL) |
-| Auth | NextAuth.js v5 + FingerprintJS |
-| AI | Vercel AI SDK v6 + OpenAI / Anthropic |
-| PDF | Puppeteer Core + @sparticuz/chromium |
-| i18n | next-intl |
-| Validation | Zod v4 |
-
-## Getting Started
-
-### Docker (Recommended)
+### Docker（推荐）
 
 ```bash
-# Generate a secret key first
-openssl rand -base64 32
+cp .env.example .env.local
+# 至少设置 AUTH_SECRET
 
-docker build -t jadeai-local:latest .
+docker build --pull -t jadeai-local:latest .
 
-docker run -d -p 3000:3000 \
-  -e AUTH_SECRET=<your-generated-secret> \
-  -v jadeai-data:/app/data \
+docker run -d --name jadeai \
+  --restart unless-stopped \
+  --env-file .env.local \
+  -p 3000:3000 \
+  -v "$(pwd)/jadeai-data:/app/data" \
   jadeai-local:latest
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Database auto-migrates and seeds on first start.
+启动后访问 [http://localhost:3000](http://localhost:3000)。
 
-> **`AUTH_SECRET`** is required for session encryption. Generate one with `openssl rand -base64 32`.
+> `AUTH_SECRET` 是必填项，可使用 `openssl rand -base64 32` 生成。
 
-> **AI Configuration:** No server-side AI env vars needed. Each user configures their own API Key, Base URL, and Model in **Settings > AI** within the app.
-
-<details>
-<summary>With PostgreSQL</summary>
-
-```bash
-docker build -t jadeai-local:latest .
-
-docker run -d -p 3000:3000 \
-  -e AUTH_SECRET=<your-generated-secret> \
-  -e DB_TYPE=postgresql \
-  -e DATABASE_URL=postgresql://user:pass@host:5432/jadeai \
-  jadeai-local:latest
-```
-
-</details>
-
-<details>
-<summary>With Google OAuth</summary>
-
-```bash
-docker build -t jadeai-local:latest .
-
-docker run -d -p 3000:3000 \
-  -e AUTH_ENABLED=true \
-  -e AUTH_SECRET=your-secret \
-  -e GOOGLE_CLIENT_ID=xxx \
-  -e GOOGLE_CLIENT_SECRET=xxx \
-  -v jadeai-data:/app/data \
-  jadeai-local:latest
-```
-
-</details>
-
-### Local Development
-
-#### Prerequisites
-
-- Node.js 18+
-- pnpm 9+
-
-#### Installation
+### 本地开发
 
 ```bash
 git clone https://github.com/LessUp/JadeAI.git
@@ -257,238 +111,55 @@ cd JadeAI
 
 pnpm install
 cp .env.example .env.local
-```
-
-#### Configure Environment
-
-Edit `.env.local`:
-
-```bash
-# Database (defaults to SQLite, no config needed)
-DB_TYPE=sqlite
-
-# Auth (defaults to fingerprint mode, no config needed)
-AUTH_ENABLED=false
-```
-
-> **AI Configuration:** No server-side env vars needed. Each user configures their own API Key, Base URL, and Model in **Settings > AI** within the app.
-
-See `.env.example` for all available options (Google OAuth, PostgreSQL, etc.).
-
-#### Initialize Database & Run
-
-```bash
-# Generate and run migrations
 pnpm db:generate
 pnpm db:migrate
-
-# (Optional) Seed with sample data
-pnpm db:seed
-
-# Start dev server
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+默认数据库为 SQLite；如需 PostgreSQL，请在 `.env.local` 中设置：
 
-## Environment Variables
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `AUTH_SECRET` | Yes | — | Secret key for session encryption |
-| `DB_TYPE` | No | `sqlite` | Database type: `sqlite` or `postgresql` |
-| `DATABASE_URL` | When PostgreSQL | — | PostgreSQL connection string |
-| `SQLITE_PATH` | No | `./data/jade.db` | SQLite database file path |
-| `AUTH_ENABLED` | No | `false` | Enable Google OAuth (`true`) or use fingerprint mode (`false`) |
-| `GOOGLE_CLIENT_ID` | When OAuth | — | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | When OAuth | — | Google OAuth client secret |
-| `APP_NAME` | No | `JadeAI` | Application display name |
-| `PUBLIC_GITHUB_REPO` | No | `LessUp/JadeAI` | GitHub repository shown in the landing page |
-| `PUBLIC_SITE_URL` | No | `https://lessup.github.io/JadeAI` | Public homepage URL used in metadata and landing-page demos |
-| `DEFAULT_LOCALE` | No | `zh` | Default language: `zh` or `en` |
-
-## Scripts
-
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start dev server with Turbopack |
-| `pnpm build` | Production build |
-| `pnpm start` | Start production server |
-| `pnpm lint` | Run ESLint |
-| `pnpm type-check` | TypeScript type checking |
-| `pnpm db:generate` | Generate Drizzle migrations (SQLite) |
-| `pnpm db:generate:pg` | Generate Drizzle migrations (PostgreSQL) |
-| `pnpm db:migrate` | Execute database migrations |
-| `pnpm db:studio` | Open Drizzle Studio (database GUI) |
-| `pnpm db:seed` | Seed database with sample data |
-
-## Project Structure
-
-```
-src/
-├── app/                        # Next.js App Router
-│   ├── [locale]/               # i18n routes (/zh/..., /en/...)
-│   │   ├── dashboard/          # Resume list & management
-│   │   ├── editor/[id]/        # Resume editor
-│   │   ├── preview/[id]/       # Full-screen preview
-│   │   ├── templates/          # Template gallery
-│   │   └── share/[token]/      # Public shared resume viewer
-│   └── api/
-│       ├── ai/                 # AI endpoints
-│       │   ├── chat/           #   Streaming chat with tool calls
-│       │   ├── generate-resume/#   AI resume generation
-│       │   ├── jd-analysis/    #   JD match analysis
-│       │   ├── grammar-check/  #   Grammar & writing check
-│       │   ├── cover-letter/   #   Cover letter generation
-│       │   ├── translate/      #   Resume translation
-│       │   └── models/         #   List available AI models
-│       ├── resume/             # Resume CRUD, export, parse, share
-│       ├── share/              # Public share access
-│       ├── user/               # User profile & settings
-│       └── auth/               # NextAuth handlers
-├── components/
-│   ├── ui/                     # shadcn/ui base components
-│   ├── editor/                 # Editor canvas, sections, fields, dialogs
-│   ├── ai/                     # AI chat panel & bubble
-│   ├── preview/templates/      # 50 resume templates
-│   ├── dashboard/              # Dashboard cards, grid, dialogs
-│   └── layout/                 # Header, theme provider, locale switcher
-├── lib/
-│   ├── db/                     # Schema, repositories, migrations, adapters
-│   ├── auth/                   # Auth configuration
-│   └── ai/                     # AI prompts, tools, model config
-├── hooks/                      # Custom React hooks (7 hooks)
-├── stores/                     # Zustand stores (resume, editor, settings, UI, tour)
-└── types/                      # TypeScript type definitions
+```bash
+DB_TYPE=postgresql
+DATABASE_URL=postgresql://user:pass@host:5432/jadeai
 ```
 
-## Templates
+## 常用命令
 
-JadeAI includes **50 professionally designed resume templates** covering a wide range of styles and industries:
+| 命令 | 说明 |
+|---|---|
+| `pnpm dev` | 启动开发服务器 |
+| `pnpm build` | 生产构建 |
+| `pnpm type-check` | TypeScript 类型检查 |
+| `pnpm lint` | ESLint 检查 |
+| `pnpm db:generate` | 生成 SQLite 迁移 |
+| `pnpm db:generate:pg` | 生成 PostgreSQL 迁移 |
+| `pnpm db:migrate` | 执行迁移 |
+| `pnpm db:seed` | 填充示例数据 |
 
-<details>
-<summary>View all 50 templates</summary>
+## 截图
 
-| # | Template | # | Template | # | Template |
-|---|----------|---|----------|---|----------|
-| 1 | Classic | 18 | Clean | 35 | Material |
-| 2 | Modern | 19 | Bold | 36 | Medical |
-| 3 | Minimal | 20 | Timeline | 37 | Luxe |
-| 4 | Professional | 21 | Nordic | 38 | Retro |
-| 5 | Two-Column | 22 | Gradient | 39 | Card |
-| 6 | ATS | 23 | Magazine | 40 | Rose |
-| 7 | Academic | 24 | Corporate | 41 | Teacher |
-| 8 | Creative | 25 | Consultant | 42 | Coder |
-| 9 | Elegant | 26 | Swiss | 43 | Zigzag |
-| 10 | Executive | 27 | Metro | 44 | Neon |
-| 11 | Developer | 28 | Architect | 45 | Scientist |
-| 12 | Designer | 29 | Japanese | 46 | Blocks |
-| 13 | Startup | 30 | Artistic | 47 | Ribbon |
-| 14 | Formal | 31 | Sidebar | 48 | Engineer |
-| 15 | Infographic | 32 | Finance | 49 | Watercolor |
-| 16 | Compact | 33 | Berlin | 50 | Mosaic |
-| 17 | Euro | 34 | Legal | | |
+| 模板画廊 | 简历编辑器 |
+|:---:|:---:|
+| ![模板画廊](images/template-list.png) | ![简历编辑器](images/resume-edit.png) |
 
-</details>
+| AI 优化 | JD 匹配分析 |
+|:---:|:---:|
+| ![AI 优化](images/ai%20优化.png) | ![JD 匹配分析](images/JD%20匹配分析.png) |
 
-## API Reference
+| 模拟面试 | 面试报告 |
+|:---:|:---:|
+| ![模拟面试](images/模拟面试.png) | ![面试报告](images/面试报告.png) |
 
-<details>
-<summary>View all API endpoints</summary>
+## 文档与发布记录
 
-### Resume
+- 版本更新请查看 [`changelog/`](./changelog/)
+- 架构说明请查看 [`ARCHITECTURE.md`](./ARCHITECTURE.md)
+- 功能想法请查看 [`FEATURE-IDEAS.md`](./FEATURE-IDEAS.md)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/resume` | List all resumes for current user |
-| `POST` | `/api/resume` | Create a new resume |
-| `GET` | `/api/resume/[id]` | Get resume detail with all sections |
-| `PUT` | `/api/resume/[id]` | Update resume metadata or sections |
-| `DELETE` | `/api/resume/[id]` | Delete a resume |
-| `POST` | `/api/resume/[id]/duplicate` | Duplicate a resume |
-| `GET` | `/api/resume/[id]/export` | Export resume (pdf, docx, html, txt, json) |
-| `POST` | `/api/resume/parse` | Parse resume from PDF or image upload |
-| `POST` | `/api/resume/[id]/share` | Create share link |
-| `GET` | `/api/resume/[id]/share` | Get share settings |
-| `DELETE` | `/api/resume/[id]/share` | Remove share link |
+## 社区
 
-### Share
+- [Linux.do](https://linux.do/)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/share/[token]` | Access a publicly shared resume |
+---
 
-### AI
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/ai/chat` | Stream chat messages with resume context |
-| `GET` | `/api/ai/chat/sessions` | List chat sessions for a resume |
-| `POST` | `/api/ai/chat/sessions` | Create a new chat session |
-| `GET` | `/api/ai/chat/sessions/[id]` | Get paginated messages for a session |
-| `DELETE` | `/api/ai/chat/sessions/[id]` | Delete a chat session |
-| `POST` | `/api/ai/generate-resume` | Generate resume from job title & experience |
-| `POST` | `/api/ai/jd-analysis` | Analyze resume against a job description |
-| `POST` | `/api/ai/grammar-check` | Check grammar and writing quality |
-| `POST` | `/api/ai/cover-letter` | Generate a tailored cover letter |
-| `POST` | `/api/ai/translate` | Translate resume content |
-| `GET` | `/api/ai/models` | List available AI models |
-
-### User
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/user` | Get current user profile |
-| `PUT` | `/api/user` | Update user profile |
-| `GET` | `/api/user/settings` | Get user settings |
-| `PUT` | `/api/user/settings` | Update user settings |
-
-</details>
-
-## Contributing
-
-Contributions are welcome! Here's how to get started:
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/your-feature`
-3. Commit your changes: `git commit -m 'feat: add your feature'`
-4. Push to the branch: `git push origin feat/your-feature`
-5. Open a Pull Request
-
-## FAQ
-
-<details>
-<summary><b>How does AI configuration work?</b></summary>
-
-JadeAI does not require server-side AI API keys. Each user configures their own AI provider (OpenAI, Anthropic, or custom endpoint), API key, and model in **Settings > AI** within the app. API keys are stored in the browser's local storage and are never sent to the server for storage.
-
-</details>
-
-<details>
-<summary><b>Can I switch between SQLite and PostgreSQL?</b></summary>
-
-Yes. Set the `DB_TYPE` environment variable to `sqlite` or `postgresql`. SQLite is the default and requires zero configuration. For PostgreSQL, also set `DATABASE_URL`. Note that data is not automatically migrated between database types.
-
-</details>
-
-<details>
-<summary><b>How does authentication work without OAuth?</b></summary>
-
-When `AUTH_ENABLED=false` (default), JadeAI uses browser fingerprinting via FingerprintJS. A unique fingerprint ID is generated for each browser and used as the user identifier. No login screen is shown — users can start building resumes immediately.
-
-</details>
-
-<details>
-<summary><b>How is PDF export implemented?</b></summary>
-
-PDF export uses Puppeteer Core with @sparticuz/chromium. Each of the 50 templates has a dedicated server-side export handler that renders the resume to high-fidelity PDF. DOCX, HTML, TXT, and JSON exports are also supported.
-
-</details>
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=LessUp/JadeAI&type=date&legend=top-left)](https://www.star-history.com/#LessUp/JadeAI&type=date&legend=top-left)
-
-## License
-
-[Apache License 2.0](LICENSE)
+如果你想把 JadeAI 部署到自己的服务器，建议先用本地 Docker 流程验证，再迁移到正式环境。

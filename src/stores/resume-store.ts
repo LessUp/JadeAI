@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import type { Resume, ResumeSection, SectionContent } from '@/types/resume';
+import type { ResumeVersionSource } from '@/types/editor';
 import { AUTOSAVE_DELAY } from '@/lib/constants';
 import { generateId } from '@/lib/utils';
+import { createResumeDraftSnapshot } from '@/lib/editor/resume-draft';
+import { saveResumeVersion } from '@/lib/editor/resume-version-history';
+import { useEditorStore } from '@/stores/editor-store';
 import { useSettingsStore } from '@/stores/settings-store';
 
 interface ResumeStore {
@@ -20,9 +24,14 @@ interface ResumeStore {
   toggleSectionVisibility: (sectionId: string) => void;
   setTemplate: (template: string) => void;
   setTitle: (title: string) => void;
-  save: () => Promise<void>;
+  save: (options?: { source?: ResumeVersionSource; forceVersion?: boolean }) => Promise<void>;
   _scheduleSave: () => void;
   reset: () => void;
+}
+
+function pushUndoSnapshot(resume: Resume | null) {
+  if (!resume) return;
+  useEditorStore.getState().pushSnapshot(createResumeDraftSnapshot(resume));
 }
 
 export const useResumeStore = create<ResumeStore>((set, get) => ({
@@ -69,6 +78,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
 
   updateSection: (sectionId, content) => {
     set((state) => {
+      pushUndoSnapshot(state.currentResume);
       const sections = state.sections.map((s) =>
         s.id === sectionId ? { ...s, content: { ...s.content, ...content } as SectionContent } : s
       );
@@ -83,6 +93,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
 
   updateSectionTitle: (sectionId, title) => {
     set((state) => {
+      pushUndoSnapshot(state.currentResume);
       const sections = state.sections.map((s) =>
         s.id === sectionId ? { ...s, title } : s
       );
@@ -97,6 +108,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
 
   addSection: (section) => {
     set((state) => {
+      pushUndoSnapshot(state.currentResume);
       const sections = [...state.sections, section];
       return {
         sections,
@@ -109,6 +121,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
 
   removeSection: (sectionId) => {
     set((state) => {
+      pushUndoSnapshot(state.currentResume);
       const sections = state.sections.filter((s) => s.id !== sectionId);
       return {
         sections,
@@ -120,16 +133,20 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
   },
 
   reorderSections: (sections) => {
-    set((state) => ({
-      sections,
-      currentResume: state.currentResume ? { ...state.currentResume, sections } : null,
-      isDirty: true,
-    }));
+    set((state) => {
+      pushUndoSnapshot(state.currentResume);
+      return {
+        sections,
+        currentResume: state.currentResume ? { ...state.currentResume, sections } : null,
+        isDirty: true,
+      };
+    });
     get()._scheduleSave();
   },
 
   toggleSectionVisibility: (sectionId) => {
     set((state) => {
+      pushUndoSnapshot(state.currentResume);
       const sections = state.sections.map((s) =>
         s.id === sectionId ? { ...s, visible: !s.visible } : s
       );
@@ -143,28 +160,59 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
   },
 
   setTemplate: (template) => {
-    set((state) => ({
-      currentResume: state.currentResume
-        ? { ...state.currentResume, template }
-        : null,
-      isDirty: true,
-    }));
+    set((state) => {
+      pushUndoSnapshot(state.currentResume);
+      return {
+        currentResume: state.currentResume
+          ? { ...state.currentResume, template }
+          : null,
+        isDirty: true,
+      };
+    });
     get()._scheduleSave();
   },
 
   setTitle: (title) => {
-    set((state) => ({
-      currentResume: state.currentResume
-        ? { ...state.currentResume, title }
-        : null,
-      isDirty: true,
-    }));
+    set((state) => {
+      pushUndoSnapshot(state.currentResume);
+      return {
+        currentResume: state.currentResume
+          ? { ...state.currentResume, title }
+          : null,
+        isDirty: true,
+      };
+    });
     get()._scheduleSave();
   },
 
-  save: async () => {
-    const { currentResume, sections, isDirty } = get();
-    if (!currentResume || !isDirty) return;
+  save: async (options) => {
+    const { currentResume, sections, isDirty, isSaving } = get();
+    const source = options?.source ?? 'manual';
+    if (!currentResume || isSaving) return;
+
+    if (!isDirty) {
+      if (!options?.forceVersion) return;
+
+      try {
+        await saveResumeVersion({
+          resumeId: currentResume.id,
+          snapshot: createResumeDraftSnapshot({
+            ...currentResume,
+            sections,
+          }),
+          source,
+        });
+      } catch (error) {
+        console.error('Failed to save local resume version:', error);
+      }
+      return;
+    }
+
+    const { _saveTimeout } = get();
+    if (_saveTimeout) {
+      clearTimeout(_saveTimeout);
+      set({ _saveTimeout: null });
+    }
 
     set({ isSaving: true });
     try {
@@ -182,6 +230,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
           title: currentResume.title,
           template: currentResume.template,
           themeConfig: currentResume.themeConfig,
+          language: currentResume.language,
           sections: sections.map((s, i) => ({
             id: s.id,
             type: s.type,
@@ -201,6 +250,19 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
       }
 
       set({ isDirty: false });
+
+      try {
+        await saveResumeVersion({
+          resumeId: currentResume.id,
+          snapshot: createResumeDraftSnapshot({
+            ...currentResume,
+            sections,
+          }),
+          source,
+        });
+      } catch (error) {
+        console.error('Failed to save local resume version:', error);
+      }
     } finally {
       set({ isSaving: false });
     }
@@ -220,7 +282,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
 
     const delay = _hydrated ? autoSaveInterval : AUTOSAVE_DELAY;
     const timeout = setTimeout(() => {
-      void get().save().catch((error) => {
+      void get().save({ source: 'autosave' }).catch((error) => {
         console.error('Failed to auto-save resume:', error);
       });
     }, delay);

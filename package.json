@@ -1,7 +1,8 @@
 {
   "name": "jadeai",
-  "version": "0.1.0",
+  "version": "0.3.6",
   "private": true,
+  "packageManager": "pnpm@11.0.9",
   "homepage": "https://lessup.github.io/JadeAI",
   "repository": {
     "type": "git",
