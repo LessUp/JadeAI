@@ -38,6 +38,7 @@ import { templateLabelsMap } from '@/lib/template-labels';
 import { TemplateThumbnail } from '@/components/dashboard/template-thumbnail';
 import { cn } from '@/lib/utils';
 import type { ThemeConfig } from '@/types/resume';
+import { commitResumeChange } from '@/lib/editor/resume-history-actions';
 
 // -- Preset Themes --
 
@@ -260,17 +261,12 @@ export function ThemeEditor() {
   const updateTheme = useCallback(
     (updates: Partial<ThemeConfig>) => {
       if (!currentResume) return;
-      const newConfig = { ...themeConfig, ...updates };
-      useResumeStore.setState((state) => ({
-        currentResume: state.currentResume
-          ? { ...state.currentResume, themeConfig: newConfig }
-          : null,
-        isDirty: true,
+      void commitResumeChange((draft) => ({
+        ...draft,
+        themeConfig: { ...draft.themeConfig, ...updates },
       }));
-      // Trigger autosave
-      useResumeStore.getState()._scheduleSave();
     },
-    [currentResume, themeConfig]
+    [currentResume]
   );
 
   const applyPreset = useCallback(
@@ -286,7 +282,7 @@ export function ThemeEditor() {
 
   const handleTemplateSwitch = useCallback(
     (tpl: string) => {
-      useResumeStore.getState().setTemplate(tpl);
+      void commitResumeChange((draft) => ({ ...draft, template: tpl }));
     },
     []
   );

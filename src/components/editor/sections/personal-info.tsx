@@ -8,6 +8,7 @@ import { EditableSelect } from '../fields/editable-select';
 import { FieldWrapper } from '../fields/field-wrapper';
 import { useResumeStore } from '@/stores/resume-store';
 import type { ResumeSection, PersonalInfoContent } from '@/types/resume';
+import { commitResumeChange } from '@/lib/editor/resume-history-actions';
 
 interface Props {
   section: ResumeSection;
@@ -57,14 +58,10 @@ export function PersonalInfoSection({ section, onUpdate }: Props) {
 
   const updateAvatarStyle = (style: 'circle' | 'oneInch') => {
     if (!currentResume) return;
-    const newConfig = { ...currentResume.themeConfig, avatarStyle: style };
-    useResumeStore.setState((state) => ({
-      currentResume: state.currentResume
-        ? { ...state.currentResume, themeConfig: newConfig }
-        : null,
-      isDirty: true,
+    void commitResumeChange((draft) => ({
+      ...draft,
+      themeConfig: { ...draft.themeConfig, avatarStyle: style },
     }));
-    useResumeStore.getState()._scheduleSave();
   };
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

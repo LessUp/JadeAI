@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/routing';
-import { ArrowLeft, Undo2, Redo2, Download, Upload, Settings, Palette, Save, FileSearch, Languages, FileText, SpellCheck, Share2, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Undo2, Redo2, Download, Upload, Settings, Palette, Save, FileSearch, Languages, FileText, SpellCheck, Share2, MoreHorizontal, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -17,26 +18,40 @@ import { useUIStore } from '@/stores/ui-store';
 import { useSettingsStore } from '@/stores/settings-store';
 import { LocaleSwitcher } from '@/components/layout/locale-switcher';
 import { toast } from 'sonner';
+import {
+  applyResumeDraftSnapshot,
+  getCurrentResumeDraftSnapshot,
+} from '@/lib/editor/resume-history-actions';
+import { VersionHistoryDialog } from '@/components/editor/version-history-dialog';
 
 export function EditorToolbar() {
   const t = useTranslations('editor.toolbar');
   const router = useRouter();
   const { toggleThemeEditor, showThemeEditor, undo, redo, undoStack, redoStack } = useEditorStore();
-  const { isSaving, isDirty, currentResume, reorderSections, save } = useResumeStore();
+  const { isSaving, isDirty, currentResume, save } = useResumeStore();
   const { openModal } = useUIStore();
   const autoSave = useSettingsStore((s) => s.autoSave);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
 
   const handleUndo = () => {
-    const snapshot = undo();
+    const snapshot = undo(getCurrentResumeDraftSnapshot());
     if (snapshot) {
-      reorderSections(snapshot.sections);
+      applyResumeDraftSnapshot(snapshot.draft, {
+        scheduleSave: true,
+        markDirty: true,
+        clearPendingSave: true,
+      });
     }
   };
 
   const handleRedo = () => {
-    const snapshot = redo();
+    const snapshot = redo(getCurrentResumeDraftSnapshot());
     if (snapshot) {
-      reorderSections(snapshot.sections);
+      applyResumeDraftSnapshot(snapshot.draft, {
+        scheduleSave: true,
+        markDirty: true,
+        clearPendingSave: true,
+      });
     }
   };
 
@@ -100,6 +115,16 @@ export function EditorToolbar() {
           title={t('redo')}
         >
           <Redo2 className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowVersionHistory(true)}
+          disabled={!currentResume}
+          className="h-8 w-8 cursor-pointer"
+          title={t('history')}
+        >
+          <History className="h-4 w-4" />
         </Button>
         <Separator orientation="vertical" className="hidden h-6 sm:block" />
 
@@ -250,6 +275,11 @@ export function EditorToolbar() {
         <Separator orientation="vertical" className="hidden h-6 sm:block" />
         <LocaleSwitcher />
       </div>
+      <VersionHistoryDialog
+        open={showVersionHistory}
+        onOpenChange={setShowVersionHistory}
+        resumeId={currentResume?.id ?? null}
+      />
     </div>
   );
 }

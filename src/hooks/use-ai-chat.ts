@@ -7,6 +7,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useResumeStore } from '@/stores/resume-store';
 import { useSettingsStore, getAIHeaders } from '@/stores/settings-store';
 import { generateId } from '@/lib/utils';
+import {
+  saveCurrentResumeVersion,
+  syncResumeFromServer,
+} from '@/lib/editor/resume-history-actions';
 
 interface UseAIChatOptions {
   resumeId: string;
@@ -15,21 +19,24 @@ interface UseAIChatOptions {
   selectedModel?: string;
 }
 
+function isCompletedToolPart(part: unknown): boolean {
+  if (!part || typeof part !== 'object') return false;
+
+  const candidate = part as { type?: unknown; state?: unknown };
+  return typeof candidate.type === 'string'
+    && candidate.type.startsWith('tool-')
+    && candidate.state === 'output-available';
+}
+
 export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel }: UseAIChatOptions) {
   const [input, setInput] = useState('');
   const [localMessages, setLocalMessages] = useState<UIMessage[]>([]);
-
-  const modelRef = useRef(selectedModel);
-  modelRef.current = selectedModel;
-
-  const sessionIdRef = useRef(sessionId);
-  sessionIdRef.current = sessionId;
 
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: '/api/ai/chat',
-        body: () => ({ resumeId, model: modelRef.current, sessionId: sessionIdRef.current }),
+        body: () => ({ resumeId, model: selectedModel, sessionId }),
         // headers must be a function — useChat never updates the transport ref,
         // so a static object would freeze stale values from before store hydration.
         headers: () => {
@@ -37,7 +44,7 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
           return { ...(fp ? { 'x-fingerprint': fp } : {}), ...getAIHeaders() };
         },
       }),
-    [resumeId]
+    [resumeId, selectedModel, sessionId]
   );
 
   const { messages, sendMessage, status, error, setMessages } = useChat({
@@ -57,13 +64,21 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
       // Cancel any pending autosave to prevent overwriting server data
       if (store._saveTimeout) clearTimeout(store._saveTimeout);
 
+      if (store.currentResume) {
+        await saveCurrentResumeVersion('checkpoint');
+      }
+
       const fp = typeof window !== 'undefined' ? localStorage.getItem('jade_fingerprint') : null;
       const res = await fetch(`/api/resume/${resumeId}`, {
         headers: fp ? { 'x-fingerprint': fp } : {},
       });
       if (res.ok) {
         const resume = await res.json();
-        useResumeStore.getState().setResume(resume);
+        await syncResumeFromServer(resume, {
+          recordHistory: true,
+          saveVersion: true,
+          source: 'ai',
+        });
       }
     } catch (err) {
       console.error('Failed to reload resume after tool call:', err);
@@ -74,9 +89,7 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
   useEffect(() => {
     const completedToolCount = messages.reduce((count, m) => {
       if (m.role !== 'assistant' || !m.parts) return count;
-      return count + m.parts.filter((p: any) =>
-        typeof p.type === 'string' && p.type.startsWith('tool-') && p.state === 'output-available'
-      ).length;
+      return count + m.parts.filter(isCompletedToolPart).length;
     }, 0);
 
     if (completedToolCount > completedToolCountRef.current) {
@@ -91,9 +104,7 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
       // Pre-calculate tool count from initial messages to avoid triggering a redundant reload
       const initialToolCount = initialMessages.reduce((count, m) => {
         if (m.role !== 'assistant' || !m.parts) return count;
-        return count + m.parts.filter((p: any) =>
-          typeof p.type === 'string' && p.type.startsWith('tool-') && p.state === 'output-available'
-        ).length;
+        return count + m.parts.filter(isCompletedToolPart).length;
       }, 0);
       completedToolCountRef.current = initialToolCount;
       setMessages(initialMessages);

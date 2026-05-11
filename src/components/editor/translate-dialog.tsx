@@ -17,6 +17,11 @@ import { LanguageSelect } from '@/components/ui/language-select';
 import { Languages, Loader2, CheckCircle2, AlertCircle, FileEdit, FilePlus2 } from 'lucide-react';
 import { getAIHeaders } from '@/stores/settings-store';
 import { cn } from '@/lib/utils';
+import type { ResumeSection } from '@/types/resume';
+import {
+  saveCurrentResumeVersion,
+  syncResumeFromServer,
+} from '@/lib/editor/resume-history-actions';
 
 interface TranslateDialogProps {
   open: boolean;
@@ -35,7 +40,7 @@ interface Progress {
 /** Read an NDJSON stream line by line, calling onLine for each parsed JSON object. */
 async function readNDJSON(
   response: Response,
-  onLine: (data: Record<string, unknown>) => void
+  onLine: (data: Record<string, unknown>) => void | Promise<void>
 ) {
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
@@ -51,13 +56,13 @@ async function readNDJSON(
 
     for (const line of lines) {
       if (!line.trim()) continue;
-      onLine(JSON.parse(line));
+      await onLine(JSON.parse(line));
     }
   }
 
   // Handle remaining buffer
   if (buffer.trim()) {
-    onLine(JSON.parse(buffer));
+    await onLine(JSON.parse(buffer));
   }
 }
 
@@ -103,6 +108,10 @@ export function TranslateDialog({ open, onOpenChange, resumeId }: TranslateDialo
     abortRef.current = controller;
 
     try {
+      if (mode === 'overwrite') {
+        await saveCurrentResumeVersion('checkpoint');
+      }
+
       const fingerprint = localStorage.getItem('jade_fingerprint');
       const res = await fetch('/api/ai/translate', {
         method: 'POST',
@@ -120,7 +129,7 @@ export function TranslateDialog({ open, onOpenChange, resumeId }: TranslateDialo
         throw new Error(data.error || 'Translation failed');
       }
 
-      await readNDJSON(res, (data) => {
+      await readNDJSON(res, async (data) => {
         if (data.type === 'progress') {
           setProgress({
             completed: data.completed as number,
@@ -129,15 +138,17 @@ export function TranslateDialog({ open, onOpenChange, resumeId }: TranslateDialo
 
           // In overwrite mode, apply each translated section to the store in real-time
           if (mode === 'overwrite') {
-            const section = data.section as { sectionId: string; title: string; content: any } | undefined;
+            const section = data.section as
+              | { sectionId: string; title: string; content: unknown }
+              | undefined;
             if (section) {
               const current = useResumeStore.getState().currentResume;
               if (current) {
                 useResumeStore.getState().setResume({
                   ...current,
-                  sections: current.sections.map((s: any) =>
+                  sections: current.sections.map((s) =>
                     s.id === section.sectionId
-                      ? { ...s, title: section.title, content: section.content }
+                      ? { ...s, title: section.title, content: section.content as typeof s.content }
                       : s
                   ),
                 });
@@ -159,10 +170,14 @@ export function TranslateDialog({ open, onOpenChange, resumeId }: TranslateDialo
             // Overwrite mode: sync store and close
             const current = useResumeStore.getState().currentResume;
             if (current) {
-              useResumeStore.getState().setResume({
+              await syncResumeFromServer({
                 ...current,
                 language: data.language as string,
-                sections: data.sections as any,
+                sections: data.sections as ResumeSection[],
+              }, {
+                recordHistory: true,
+                saveVersion: true,
+                source: 'translate',
               });
             }
 
@@ -172,10 +187,10 @@ export function TranslateDialog({ open, onOpenChange, resumeId }: TranslateDialo
           }
         }
       });
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       setState('error');
-      setErrorMessage(err.message || t('error'));
+      setErrorMessage(err instanceof Error ? err.message : t('error'));
     }
   }, [resumeId, targetLanguage, mode, onOpenChange, t, router]);
 

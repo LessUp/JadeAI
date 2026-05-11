@@ -60,3 +60,4 @@ export const TWO_COLUMN_TEMPLATES: Record<string, { bg: string; width: string }>
 
 export const AUTOSAVE_DELAY = 500;
 export const MAX_UNDO_STACK = 50;
+export const MAX_RESUME_VERSIONS = 30;

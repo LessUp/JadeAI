@@ -21,6 +21,10 @@ import {
 } from 'lucide-react';
 import type { ResumeSection, SectionContent } from '@/types/resume';
 import { generateId } from '@/lib/utils';
+import {
+  commitResumeChange,
+  saveCurrentResumeVersion,
+} from '@/lib/editor/resume-history-actions';
 
 interface ImportDialogProps {
   open: boolean;
@@ -53,7 +57,7 @@ function normalizeImportedSections(
 
 export function ImportDialog({ open, onOpenChange, resumeId }: ImportDialogProps) {
   const t = useTranslations('import');
-  const { currentResume, setResume, save } = useResumeStore();
+  const { currentResume } = useResumeStore();
 
   const [state, setState] = useState<ImportState>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -117,18 +121,18 @@ export function ImportDialog({ open, onOpenChange, resumeId }: ImportDialogProps
       }
 
       const normalizedSections = normalizeImportedSections(data.sections, resumeId);
-
-      setResume({
-        ...currentResume,
-        title: data.title ?? currentResume.title,
-        template: data.template ?? currentResume.template,
-        themeConfig: data.themeConfig ?? currentResume.themeConfig,
+      await saveCurrentResumeVersion('checkpoint');
+      await commitResumeChange((draft) => ({
+        ...draft,
+        title: data.title ?? draft.title,
+        template: data.template ?? draft.template,
+        themeConfig: data.themeConfig ?? draft.themeConfig,
+        language: data.language ?? draft.language,
         sections: normalizedSections,
+      }), {
+        saveNow: true,
+        source: 'import',
       });
-
-      // Mark dirty and save
-      useResumeStore.setState({ isDirty: true });
-      await save();
 
       setState('success');
       setTimeout(() => onOpenChange(false), 1500);
@@ -140,7 +144,7 @@ export function ImportDialog({ open, onOpenChange, resumeId }: ImportDialogProps
         setErrorMessage(err instanceof Error ? err.message : t('error'));
       }
     }
-  }, [selectedFile, currentResume, resumeId, setResume, save, onOpenChange, t]);
+  }, [selectedFile, currentResume, resumeId, onOpenChange, t]);
 
   const isLoading = state === 'importing';
 
