@@ -1,11 +1,20 @@
-FROM node:20-alpine AS base
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# syntax=docker/dockerfile:1
+
+FROM node:24-alpine AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN apk add --no-cache libc6-compat \
+    && corepack enable \
+    && corepack prepare pnpm@latest --activate
 
 # --- Dependencies ---
 FROM base AS deps
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN apk add --no-cache python3 make g++
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm fetch --frozen-lockfile
+RUN pnpm install --frozen-lockfile --offline
 
 # --- Build ---
 FROM base AS builder
@@ -19,7 +28,6 @@ RUN pnpm build
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
 
 # Install Chromium, dependencies, and CJK fonts for PDF export
 RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont \
@@ -43,5 +51,7 @@ VOLUME /app/data
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD wget -qO- "http://127.0.0.1:${PORT}/" >/dev/null || exit 1
 
 CMD ["node", "server.js"]

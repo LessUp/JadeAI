@@ -6,6 +6,8 @@ import { generateHtml } from './builders';
 import { generatePlainText } from './plain-text';
 import { generateDocxBuffer } from './docx';
 
+export const dynamic = 'force-dynamic';
+
 // Chromium download + PDF render needs more time on Vercel serverless
 export const maxDuration = 60;
 

@@ -4,6 +4,8 @@ import { shareRepository } from '@/lib/db/repositories/share.repository';
 import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
 import { generateShareToken, getShareUrl, hashPassword } from '@/lib/utils/share';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

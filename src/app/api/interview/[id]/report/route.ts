@@ -7,6 +7,8 @@ import { interviewReportSchema } from '@/lib/ai/interview-report-schema';
 import { extractJson } from '@/lib/ai/extract-json';
 import { dbReady } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await dbReady;
   const { id: sessionId } = await params;

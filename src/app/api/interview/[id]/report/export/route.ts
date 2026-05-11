@@ -5,6 +5,7 @@ import { generatePdf } from '@/lib/pdf/generate-pdf';
 import { generateInterviewReportHtml } from './html';
 import { dbReady } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

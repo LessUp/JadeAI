@@ -193,20 +193,29 @@ The following resume sections support Markdown syntax:
 ### Docker (Recommended)
 
 ```bash
-# Generate a secret key first
-openssl rand -base64 32
+# Prepare envs once
+cp .env.example .env.local
+# Set AUTH_SECRET at minimum
 
-docker build -t jadeai-local:latest .
+docker build --pull -t jadeai-local:node24 .
 
-docker run -d -p 3000:3000 \
-  -e AUTH_SECRET=<your-generated-secret> \
-  -v jadeai-data:/app/data \
-  jadeai-local:latest
+docker run -d --name jadeai \
+  --restart unless-stopped \
+  --env-file .env.local \
+  -p 3000:3000 \
+  -v "$(pwd)/jadeai-data:/app/data" \
+  jadeai-local:node24
 ```
 
 Open [http://localhost:3000](http://localhost:3000). Database auto-migrates and seeds on first start.
 
 > **`AUTH_SECRET`** is required for session encryption. Generate one with `openssl rand -base64 32`.
+
+> The production image uses a multi-stage `node:24-alpine` build and can be deployed locally first, then built and run the same way on your server.
+
+```bash
+bash ./docker_run_local.sh
+```
 
 > **AI Configuration:** No server-side AI env vars needed. Each user configures their own API Key, Base URL, and Model in **Settings > AI** within the app.
 
@@ -214,13 +223,9 @@ Open [http://localhost:3000](http://localhost:3000). Database auto-migrates and 
 <summary>With PostgreSQL</summary>
 
 ```bash
-docker build -t jadeai-local:latest .
-
-docker run -d -p 3000:3000 \
-  -e AUTH_SECRET=<your-generated-secret> \
-  -e DB_TYPE=postgresql \
-  -e DATABASE_URL=postgresql://user:pass@host:5432/jadeai \
-  jadeai-local:latest
+# In .env.local
+DB_TYPE=postgresql
+DATABASE_URL=postgresql://user:pass@host:5432/jadeai
 ```
 
 </details>
@@ -229,15 +234,10 @@ docker run -d -p 3000:3000 \
 <summary>With Google OAuth</summary>
 
 ```bash
-docker build -t jadeai-local:latest .
-
-docker run -d -p 3000:3000 \
-  -e AUTH_ENABLED=true \
-  -e AUTH_SECRET=your-secret \
-  -e GOOGLE_CLIENT_ID=xxx \
-  -e GOOGLE_CLIENT_SECRET=xxx \
-  -v jadeai-data:/app/data \
-  jadeai-local:latest
+# In .env.local
+AUTH_ENABLED=true
+GOOGLE_CLIENT_ID=xxx
+GOOGLE_CLIENT_SECRET=xxx
 ```
 
 </details>

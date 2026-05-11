@@ -1,5 +1,7 @@
 import { NextRequest } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   const provider = request.headers.get('x-provider') || 'openai';
   const apiKey = request.headers.get('x-api-key') || '';
