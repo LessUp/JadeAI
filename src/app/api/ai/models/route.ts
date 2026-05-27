@@ -1,11 +1,10 @@
 import { NextRequest } from 'next/server';
+import { extractAIConfig } from '@/lib/ai/provider';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const provider = request.headers.get('x-provider') || 'openai';
-  const apiKey = request.headers.get('x-api-key') || '';
-  const baseURL = request.headers.get('x-base-url') || '';
+  const { provider, apiKey, baseURL } = extractAIConfig(request);
 
   if (!apiKey) {
     return Response.json({ models: [] });
@@ -46,7 +45,7 @@ export async function GET(request: NextRequest) {
 
       default: {
         // openai
-        const effectiveBaseURL = baseURL || 'https://api.openai.com/v1';
+        const effectiveBaseURL = baseURL.replace(/\/$/, '');
         const res = await fetch(`${effectiveBaseURL}/models`, {
           headers: { Authorization: `Bearer ${apiKey}` },
         });

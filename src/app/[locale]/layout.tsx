@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/layout/theme-provider';
 import { RuntimeConfigProvider } from '@/components/providers/runtime-config-provider';
 import { BrandProvider } from '@/components/layout/brand-provider';
+import { getPublicServerAIConfig } from '@/lib/ai/server-config';
 
 export default async function LocaleLayout({
   children,
@@ -19,6 +20,7 @@ export default async function LocaleLayout({
   const authEnabled = process.env.AUTH_ENABLED === 'true';
   const githubRepo = process.env.PUBLIC_GITHUB_REPO || 'LessUp/JadeAI';
   const siteUrl = (process.env.PUBLIC_SITE_URL || 'https://lessup.github.io/JadeAI').replace(/\/$/, '');
+  const serverAIConfig = getPublicServerAIConfig();
 
   if (!routing.locales.includes(locale as (typeof routing.locales)[number])) {
     notFound();
@@ -28,7 +30,15 @@ export default async function LocaleLayout({
 
   return (
     <SessionProvider>
-      <RuntimeConfigProvider authEnabled={authEnabled} githubRepo={githubRepo} siteUrl={siteUrl}>
+      <RuntimeConfigProvider
+        authEnabled={authEnabled}
+        githubRepo={githubRepo}
+        siteUrl={siteUrl}
+        aiServerConfigured={serverAIConfig.configured}
+        aiServerProvider={serverAIConfig.provider}
+        aiServerBaseURL={serverAIConfig.baseURL}
+        aiServerModel={serverAIConfig.model}
+      >
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider
             attribute="class"

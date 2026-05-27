@@ -1,6 +1,14 @@
 import { create } from 'zustand';
+import { AI_PROVIDER_DEFAULTS, DEFAULT_AI_PROVIDER, normalizeAIProvider, type AIProvider } from '@/lib/ai/shared';
 
-export type AIProvider = 'openai' | 'anthropic' | 'gemini';
+export type { AIProvider } from '@/lib/ai/shared';
+
+interface ServerAIState {
+  configured: boolean;
+  provider: AIProvider;
+  baseURL: string;
+  model: string;
+}
 
 interface SettingsStore {
   // AI settings
@@ -8,6 +16,10 @@ interface SettingsStore {
   aiApiKey: string; // stored locally only, never sent to server
   aiBaseURL: string;
   aiModel: string;
+  serverAIConfigured: boolean;
+  serverAIProvider: AIProvider;
+  serverAIBaseURL: string;
+  serverAIModel: string;
   // Editor settings
   autoSave: boolean;
   autoSaveInterval: number; // in milliseconds
@@ -21,6 +33,7 @@ interface SettingsStore {
   setAIApiKey: (key: string) => void;
   setAIBaseURL: (url: string) => void;
   setAIModel: (model: string) => void;
+  setServerAIConfig: (config: ServerAIState) => void;
   setAutoSave: (enabled: boolean) => void;
   setAutoSaveInterval: (interval: number) => void;
   hydrate: () => void;
@@ -35,11 +48,12 @@ interface ProviderConfig {
   apiKey: string;
 }
 
-const PROVIDER_DEFAULTS: Record<AIProvider, ProviderConfig> = {
-  openai: { baseURL: 'https://api.openai.com/v1', model: 'gpt-4o', apiKey: '' },
-  anthropic: { baseURL: 'https://api.anthropic.com', model: 'claude-sonnet-4-20250514', apiKey: '' },
-  gemini: { baseURL: 'https://generativelanguage.googleapis.com/v1beta', model: 'gemini-2.0-flash', apiKey: '' },
-};
+const PROVIDER_DEFAULTS: Record<AIProvider, ProviderConfig> = Object.fromEntries(
+  Object.entries(AI_PROVIDER_DEFAULTS).map(([provider, defaults]) => [
+    provider,
+    { ...defaults, apiKey: '' },
+  ])
+) as Record<AIProvider, ProviderConfig>;
 
 function loadProviderConfigs(): Partial<Record<AIProvider, ProviderConfig>> {
   if (typeof window === 'undefined') return {};
@@ -122,20 +136,38 @@ function loadApiKeyLocally(): string {
 }
 
 export function getAIHeaders(): Record<string, string> {
-  const { aiProvider, aiApiKey, aiBaseURL, aiModel } = useSettingsStore.getState();
+  const {
+    aiProvider,
+    aiApiKey,
+    aiBaseURL,
+    aiModel,
+    serverAIConfigured,
+    serverAIProvider,
+    serverAIBaseURL,
+    serverAIModel,
+  } = useSettingsStore.getState();
+
+  const useServerDefaults = !aiApiKey && serverAIConfigured && aiProvider !== serverAIProvider;
+  const effectiveProvider = useServerDefaults ? serverAIProvider : aiProvider;
+  const effectiveBaseURL = useServerDefaults ? serverAIBaseURL : aiBaseURL;
+  const effectiveModel = useServerDefaults ? serverAIModel : aiModel;
   const headers: Record<string, string> = {};
-  if (aiProvider) headers['x-provider'] = aiProvider;
+  if (effectiveProvider) headers['x-provider'] = effectiveProvider;
   if (aiApiKey) headers['x-api-key'] = aiApiKey;
-  if (aiBaseURL) headers['x-base-url'] = aiBaseURL;
-  if (aiModel) headers['x-model'] = aiModel;
+  if (effectiveBaseURL) headers['x-base-url'] = effectiveBaseURL;
+  if (effectiveModel) headers['x-model'] = effectiveModel;
   return headers;
 }
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
-  aiProvider: 'openai',
+  aiProvider: DEFAULT_AI_PROVIDER,
   aiApiKey: '',
-  aiBaseURL: 'https://api.openai.com/v1',
-  aiModel: 'gpt-4o',
+  aiBaseURL: PROVIDER_DEFAULTS[DEFAULT_AI_PROVIDER].baseURL,
+  aiModel: PROVIDER_DEFAULTS[DEFAULT_AI_PROVIDER].model,
+  serverAIConfigured: false,
+  serverAIProvider: DEFAULT_AI_PROVIDER,
+  serverAIBaseURL: PROVIDER_DEFAULTS[DEFAULT_AI_PROVIDER].baseURL,
+  serverAIModel: PROVIDER_DEFAULTS[DEFAULT_AI_PROVIDER].model,
   autoSave: true,
   autoSaveInterval: 500,
   _hydrated: false,
@@ -162,6 +194,35 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     });
     saveApiKeyLocally(restored.apiKey);
     syncToServer(get());
+  },
+
+  setServerAIConfig: ({ configured, provider, baseURL, model }) => {
+    const normalizedProvider = normalizeAIProvider(provider) || DEFAULT_AI_PROVIDER;
+    set((state) => {
+      const nextState: Partial<SettingsStore> = {
+        serverAIConfigured: configured,
+        serverAIProvider: normalizedProvider,
+        serverAIBaseURL: baseURL,
+        serverAIModel: model,
+      };
+
+      if (!state.aiApiKey) {
+        if (state.aiProvider !== normalizedProvider) {
+          nextState.aiProvider = normalizedProvider;
+          nextState.aiBaseURL = baseURL;
+          nextState.aiModel = model;
+        } else {
+          if (!state.aiBaseURL || state.aiBaseURL === PROVIDER_DEFAULTS[normalizedProvider].baseURL) {
+            nextState.aiBaseURL = baseURL;
+          }
+          if (!state.aiModel || state.aiModel === PROVIDER_DEFAULTS[normalizedProvider].model) {
+            nextState.aiModel = model;
+          }
+        }
+      }
+
+      return nextState;
+    });
   },
 
   setAIApiKey: (key) => {
@@ -205,7 +266,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       if (res.ok) {
         const data = await res.json();
         // Backward compat: map legacy 'custom' provider to 'openai'
-        const provider = (data.aiProvider === 'custom' || data.aiProvider === 'azure') ? 'openai' : data.aiProvider;
+        const provider = normalizeAIProvider(data.aiProvider);
         set({
           ...(provider && { aiProvider: provider }),
           ...(data.aiBaseURL && { aiBaseURL: data.aiBaseURL }),

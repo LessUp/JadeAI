@@ -286,6 +286,7 @@
       "apiKey": "API Key",
       "apiKeyPlaceholder": "Enter your API Key...",
       "apiKeyHint": "Your API Key is stored locally and sent directly to the model provider per request.",
+      "apiKeyHintServerDefault": "Leave this empty to use the server-side default {provider} configuration. If you fill it in, it stays local in your browser and is sent directly to the model provider per request.",
       "baseURL": "Base URL",
       "model": "Default Model",
       "modelPlaceholder": "Enter model name...",

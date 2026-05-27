@@ -120,7 +120,8 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
     if (!input.trim()) return;
 
     // Check if API key is configured
-    if (!useSettingsStore.getState().aiApiKey) {
+    const { aiApiKey, serverAIConfigured } = useSettingsStore.getState();
+    if (!aiApiKey && !serverAIConfigured) {
       const userMsg: UIMessage = {
         id: generateId(),
         role: 'user',

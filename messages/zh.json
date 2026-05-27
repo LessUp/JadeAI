@@ -286,6 +286,7 @@
       "apiKey": "API Key",
       "apiKeyPlaceholder": "输入你的 API Key...",
       "apiKeyHint": "API Key 保存在本地，每次请求直接发送给模型服务商。",
+      "apiKeyHintServerDefault": "可留空以使用服务端默认 {provider} 配置；如果填写，则仅保存在本地并随请求发送给模型服务商。",
       "baseURL": "API 地址",
       "model": "默认模型",
       "modelPlaceholder": "输入模型名称...",

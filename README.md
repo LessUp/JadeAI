@@ -87,7 +87,7 @@ JadeAI 是一个面向简历编辑、AI 优化和求职准备的全栈应用。�
 
 ```bash
 cp .env.example .env.local
-# 至少设置 AUTH_SECRET
+# 至少设置 AUTH_SECRET；如需容器内直接启用 AI，设置 OPENAI_API_KEY / ANTHROPIC_API_KEY / GOOGLE_GENERATIVE_AI_API_KEY
 
 docker build --pull -t jadeai-local:latest .
 
@@ -102,6 +102,16 @@ docker run -d --name jadeai \
 启动后访问 [http://localhost:3000](http://localhost:3000)。
 
 > `AUTH_SECRET` 是必填项，可使用 `openssl rand -base64 32` 生成。
+>
+> 如果你希望容器启动后所有用户都能直接使用 AI，而不是分别在浏览器里填写 Key，请在 `.env.local` 里配置服务端 AI 环境变量，例如：
+>
+> ```bash
+> AI_PROVIDER=openai
+> OPENAI_API_KEY=sk-...
+> AI_MODEL=gpt-4o
+> ```
+>
+> 也支持 `ANTHROPIC_API_KEY` 与 `GOOGLE_GENERATIVE_AI_API_KEY`；若未设置 `AI_PROVIDER`，应用会自动选择第一个已配置的服务端模型提供商。
 
 ### 本地开发
 

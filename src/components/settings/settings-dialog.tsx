@@ -32,6 +32,7 @@ import { useTourStore } from '@/stores/tour-store';
 import { usePathname, useRouter } from '@/i18n/routing';
 import { locales, localeNames } from '@/i18n/config';
 import { cn } from '@/lib/utils';
+import { useRuntimeConfig } from '@/components/providers/runtime-config-provider';
 
 const AI_PROVIDERS: { value: AIProvider; label: string }[] = [
   { value: 'openai', label: 'OpenAI' },
@@ -47,6 +48,7 @@ export function SettingsDialog() {
   const pathname = usePathname();
   const { theme: currentTheme, setTheme } = useTheme();
   const { activeModal, closeModal, settingsTab, setSettingsTab } = useUIStore();
+  const { aiServerConfigured, aiServerProvider } = useRuntimeConfig();
   const {
     aiProvider,
     aiApiKey,
@@ -206,7 +208,11 @@ export function SettingsDialog() {
                   {showApiKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 </Button>
               </div>
-              <p className="text-xs text-zinc-400">{t('ai.apiKeyHint')}</p>
+              <p className="text-xs text-zinc-400">
+                {aiServerConfigured
+                  ? t('ai.apiKeyHintServerDefault', { provider: aiServerProvider })
+                  : t('ai.apiKeyHint')}
+              </p>
             </div>
 
             {/* Base URL */}

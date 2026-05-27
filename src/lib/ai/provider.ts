@@ -2,25 +2,30 @@ import { NextRequest } from 'next/server';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { AI_PROVIDER_DEFAULTS, DEFAULT_AI_PROVIDER, normalizeAIProvider, type AIProvider } from '@/lib/ai/shared';
+import { getServerAIConfig } from '@/lib/ai/server-config';
 
 export interface AIConfig {
-  provider: string;
+  provider: AIProvider;
   apiKey: string;
   baseURL: string;
   model: string;
 }
 
 export function extractAIConfig(request: NextRequest): AIConfig {
-  const provider = request.headers.get('x-provider') || 'openai';
-  const apiKey = request.headers.get('x-api-key') || '';
-  const baseURL = request.headers.get('x-base-url') || 'https://api.openai.com/v1';
-  const model = request.headers.get('x-model') || 'gpt-4o';
+  const requestedProvider = normalizeAIProvider(request.headers.get('x-provider'));
+  const serverConfig = getServerAIConfig(requestedProvider);
+  const provider = requestedProvider || serverConfig?.provider || DEFAULT_AI_PROVIDER;
+  const defaults = AI_PROVIDER_DEFAULTS[provider];
+  const apiKey = request.headers.get('x-api-key') || serverConfig?.apiKey || '';
+  const baseURL = request.headers.get('x-base-url') || serverConfig?.baseURL || defaults.baseURL;
+  const model = request.headers.get('x-model') || serverConfig?.model || defaults.model;
   return { provider, apiKey, baseURL, model };
 }
 
 export function getModel(config: AIConfig, modelOverride?: string) {
   if (!config.apiKey) {
-    throw new AIConfigError('API key is required. Please configure it in Settings.');
+    throw new AIConfigError('API key is required. Please configure it in Settings or set server-side AI environment variables.');
   }
   const modelId = modelOverride || config.model;
 
