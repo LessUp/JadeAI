@@ -9,7 +9,8 @@ import type {
   CustomContent,
   GitHubContent,
 } from '@/types/resume';
-import { esc, md, degreeField, getPersonalInfo, visibleSections, buildHighlights, buildQrCodesHtml, type ResumeWithSections, type Section } from '../utils';
+import { esc, md, degreeField, getPersonalInfo, visibleSections, buildHighlights, buildQrCodesHtml, buildGroupedSkillPillsHtml, type ResumeWithSections, type Section } from '../utils';
+import { getLanguageDescriptionText } from '@/lib/language-description';
 
 function buildModernSectionContent(section: Section, lang: string = 'en'): string {
   const c = section.content as any;
@@ -33,10 +34,10 @@ function buildModernSectionContent(section: Section, lang: string = 'en'): strin
     </div>`).join('')}</div>`;
   }
   if (section.type === 'skills') {
-    const allSkills = ((c as SkillsContent).categories || []).flatMap((cat: any) => cat.skills || []);
-    return `<div class="flex flex-wrap gap-2">${allSkills.map((skill: string) =>
-      `<span class="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">${esc(skill)}</span>`
-    ).join('')}</div>`;
+    return buildGroupedSkillPillsHtml(c as SkillsContent, {
+      labelStyle: 'color:#e94560;',
+      pillClass: 'rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700',
+    });
   }
   if (section.type === 'projects') {
     return `<div class="space-y-4">${((c as ProjectsContent).items || []).map((it: any) => `<div class="border-l-2 pl-4" style="border-color:#e94560">
@@ -60,7 +61,7 @@ function buildModernSectionContent(section: Section, lang: string = 'en'): strin
   }
   if (section.type === 'languages') {
     return `<div class="flex flex-wrap gap-2">${((c as LanguagesContent).items || []).map((it: any) =>
-      `<span class="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">${esc(it.language)} <span class="text-zinc-400">— ${esc(it.proficiency)}</span></span>`
+      `<div style="max-width:100%"><span class="inline-flex max-w-full flex-wrap items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">${esc(it.language)} <span class="text-zinc-400">— ${esc(it.proficiency)}</span></span>${getLanguageDescriptionText(it) ? `<div class="max-w-[320px] text-xs leading-5 text-zinc-500">${md(getLanguageDescriptionText(it))}</div>` : ''}</div>`
     ).join('')}</div>`;
   }
   if (section.type === 'custom') {

@@ -4,6 +4,7 @@ import type { Resume, PersonalInfoContent, SummaryContent, WorkExperienceContent
 import { AvatarImage } from '../avatar-image';
 import { degreeField, isSectionEmpty, md } from '../utils';
 import { QrCodesPreview } from '../qr-codes-preview';
+import { GroupedSkillPills } from '../skill-categories';
 
 const PURPLE = '#6366f1';
 const CYAN = '#06b6d4';
@@ -124,15 +125,13 @@ function StartupSectionContent({ section, resume }: { section: any; resume: Resu
 
   if (section.type === 'skills') {
     return (
-      <div className="flex flex-wrap gap-1.5">
-        {(content.categories || []).flatMap((cat: any) =>
-          (cat.skills || []).map((skill: string, i: number) => (
-            <span key={`${cat.id}-${i}`} className="rounded-full border px-3 py-1 text-xs font-medium" style={{ borderColor: PURPLE, color: PURPLE }}>
-              {skill}
-            </span>
-          ))
-        )}
-      </div>
+      <GroupedSkillPills
+        content={content as SkillsContent}
+        skillsClassName="flex flex-wrap gap-1.5"
+        labelStyle={{ color: PURPLE }}
+        pillClassName="rounded-full border px-3 py-1 text-xs font-medium"
+        pillStyle={{ borderColor: PURPLE, color: PURPLE }}
+      />
     );
   }
 

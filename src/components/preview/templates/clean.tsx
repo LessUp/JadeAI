@@ -16,6 +16,7 @@ import type {
 import { degreeField, isSectionEmpty, md } from '../utils';
 import { AvatarImage } from '../avatar-image';
 import { QrCodesPreview } from '../qr-codes-preview';
+import { GroupedSkillPills } from '../skill-categories';
 
 const BLUE = '#0066cc';
 const TEAL = '#0d9488';
@@ -139,15 +140,12 @@ function CleanSectionContent({ section, resume }: { section: any; resume: Resume
 
   if (section.type === 'skills') {
     return (
-      <div className="flex flex-wrap gap-2">
-        {(content.categories || []).flatMap((cat: any) =>
-          (cat.skills || []).map((skill: string, i: number) => (
-            <span key={`${cat.id}-${i}`} className="rounded-full border px-3 py-0.5 text-xs font-medium" style={{ borderColor: TEAL, color: TEAL }}>
-              {skill}
-            </span>
-          ))
-        )}
-      </div>
+      <GroupedSkillPills
+        content={content as SkillsContent}
+        labelStyle={{ color: TEAL }}
+        pillClassName="rounded-full border px-3 py-0.5 text-xs font-medium"
+        pillStyle={{ borderColor: TEAL, color: TEAL }}
+      />
     );
   }
 

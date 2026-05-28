@@ -665,6 +665,7 @@ function buildLanguages(c: LanguagesContent, title: string, theme: DocxTheme): D
       ],
       spacing: { after: 60 },
     }));
+    if (item.description) res.push(bodyPara(item.description, theme, { before: 20, after: 60 }));
   }
   return res;
 }
@@ -784,6 +785,12 @@ function buildSidebarLanguages(c: LanguagesContent, title: string, theme: DocxTh
       ],
       spacing: { after: 40 },
     }));
+    if (item.description) {
+      res.push(new Paragraph({
+        children: [run(item.description, theme, { size: theme.bodySize - 3, color: theme.sidebarLabelColor })],
+        spacing: { after: 40, line: theme.lineSpacing },
+      }));
+    }
   }
   return res;
 }

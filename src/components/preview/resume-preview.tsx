@@ -4,6 +4,7 @@ import { useId } from 'react';
 import type { Resume, ThemeConfig } from '@/types/resume';
 import { BACKGROUND_TEMPLATES } from '@/lib/constants';
 import { resolveFontStack } from '@/lib/font-stacks';
+import { normalizeLanguageDescriptionsForCompactTemplates } from '@/lib/language-description';
 import { ClassicTemplate } from './templates/classic';
 import { ModernTemplate } from './templates/modern';
 import { MinimalTemplate } from './templates/minimal';
@@ -246,7 +247,9 @@ export function ResumePreview({ resume }: ResumePreviewProps) {
   const theme: ThemeConfig = { ...DEFAULT_THEME, ...(resume.themeConfig || {}) };
 
   // Defensive: ensure resume.sections is always an array (AI may return invalid/empty data)
-  const safeResume = resume.sections ? resume : { ...resume, sections: [] };
+  const safeResume = normalizeLanguageDescriptionsForCompactTemplates(
+    resume.sections ? resume : { ...resume, sections: [] }
+  );
 
   return (
     <>

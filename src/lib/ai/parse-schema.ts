@@ -63,6 +63,7 @@ export const parsedResumeSchema = z.object({
   languages: z.array(z.object({
     language: z.string().describe('Language name'),
     proficiency: z.string().describe('Proficiency level'),
+    description: z.string().optional().describe('Optional details about how the language is used'),
   })).optional(),
 });
 

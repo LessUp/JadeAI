@@ -118,6 +118,7 @@ export function generatePlainText(resume: ResumeWithSections): string {
         lines.push(`== ${section.title} ==`);
         for (const item of langs.items || []) {
           lines.push(`- ${safe(item.language)}: ${safe(item.proficiency)}`);
+          if (item.description) lines.push(`  ${safe(item.description)}`);
         }
         lines.push('');
         break;

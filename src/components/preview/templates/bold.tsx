@@ -16,6 +16,7 @@ import type {
 import { AvatarImage } from '../avatar-image';
 import { degreeField, isSectionEmpty, md } from '../utils';
 import { QrCodesPreview } from '../qr-codes-preview';
+import { GroupedSkillPills } from '../skill-categories';
 
 export function BoldTemplate({ resume }: { resume: Resume }) {
   const personalInfo = resume.sections.find((s) => s.type === 'personal_info');
@@ -138,15 +139,11 @@ function BoldSectionContent({ section, resume }: { section: any; resume: Resume 
 
   if (section.type === 'skills') {
     return (
-      <div className="flex flex-wrap gap-2">
-        {(content.categories || []).flatMap((cat: any) =>
-          (cat.skills || []).map((skill: string, i: number) => (
-            <span key={`${cat.id}-${i}`} className="border-2 border-black px-3 py-1 text-xs font-bold text-black">
-              {skill}
-            </span>
-          ))
-        )}
-      </div>
+      <GroupedSkillPills
+        content={content as SkillsContent}
+        labelClassName="text-black"
+        pillClassName="border-2 border-black px-3 py-1 text-xs font-bold text-black"
+      />
     );
   }
 

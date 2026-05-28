@@ -101,6 +101,66 @@ export function buildHighlights(highlights: string[] | undefined, liClass: strin
   return highlights.filter(Boolean).map(h => `<li class="${liClass}">${md(h)}</li>`).join('');
 }
 
+function normalizeSkillCategories(content: SkillsContent) {
+  return (content.categories || [])
+    .map((category, index) => ({
+      id: category.id || `skill-category-${index}`,
+      name: safe(category.name).trim(),
+      skills: (category.skills || []).map((skill) => safe(skill).trim()).filter(Boolean),
+    }))
+    .filter((category) => category.skills.length > 0);
+}
+
+interface GroupedSkillPillsOptions {
+  labelStyle?: string;
+  groupGap?: string;
+  skillsGap?: string;
+  pillClass?: string;
+  pillStyle?: string;
+}
+
+export function buildGroupedSkillPillsHtml(content: SkillsContent, options: GroupedSkillPillsOptions = {}): string {
+  const {
+    labelStyle = '',
+    groupGap = '6px',
+    skillsGap = '8px',
+    pillClass = '',
+    pillStyle = '',
+  } = options;
+  const categories = normalizeSkillCategories(content);
+
+  return `<div style="display:flex;flex-direction:column;gap:12px">${categories.map((category) => `
+    <div style="display:flex;flex-direction:column;gap:${groupGap}">
+      ${category.name ? `<p style="font-size:12px;font-weight:600;${labelStyle}">${esc(category.name)}</p>` : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:${skillsGap}">${category.skills.map((skill) =>
+        `<span class="${pillClass}" style="${pillStyle}">${esc(skill)}</span>`
+      ).join('')}</div>
+    </div>
+  `).join('')}</div>`;
+}
+
+interface GroupedSkillLinesOptions {
+  labelStyle?: string;
+  valueStyle?: string;
+  separator?: string;
+}
+
+export function buildGroupedSkillLinesHtml(content: SkillsContent, options: GroupedSkillLinesOptions = {}): string {
+  const {
+    labelStyle = 'color:#3f3f46;',
+    valueStyle = 'color:#52525b;',
+    separator = ' / ',
+  } = options;
+  const categories = normalizeSkillCategories(content);
+
+  return `<div style="display:flex;flex-direction:column;gap:6px">${categories.map((category) => `
+    <div style="display:flex;gap:8px;font-size:14px">
+      ${category.name ? `<span style="flex-shrink:0;font-weight:500;${labelStyle}">${esc(category.name)}:</span>` : ''}
+      <span style="${valueStyle}">${esc(category.skills.join(separator))}</span>
+    </div>
+  `).join('')}</div>`;
+}
+
 // ─── QR codes inline HTML (SVGs pre-generated in builders.ts) ─
 
 export function buildQrCodesHtml(section: Section): string {

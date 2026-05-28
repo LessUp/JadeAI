@@ -9,7 +9,7 @@ import type {
   CustomContent,
   GitHubContent,
 } from '@/types/resume';
-import { esc, md, degreeField, getPersonalInfo, visibleSections, buildHighlights, buildQrCodesHtml, type ResumeWithSections, type Section } from '../utils';
+import { esc, md, degreeField, getPersonalInfo, visibleSections, buildHighlights, buildQrCodesHtml, buildGroupedSkillLinesHtml, type ResumeWithSections, type Section } from '../utils';
 
 function buildMinimalSectionContent(section: Section, lang: string = 'en'): string {
   const c = section.content as any;
@@ -33,9 +33,7 @@ function buildMinimalSectionContent(section: Section, lang: string = 'en'): stri
     </div>`).join('')}</div>`;
   }
   if (section.type === 'skills') {
-    return `<div class="space-y-1">${((c as SkillsContent).categories || []).map((cat: any) =>
-      `<p class="text-sm text-zinc-600">${esc((cat.skills || []).join(' / '))}</p>`
-    ).join('')}</div>`;
+    return buildGroupedSkillLinesHtml(c as SkillsContent);
   }
   if (section.type === 'projects') {
     return `<div class="space-y-4">${((c as ProjectsContent).items || []).map((it: any) => `<div>

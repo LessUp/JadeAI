@@ -16,7 +16,7 @@ export function createExecutableTools(resumeId: string, aiConfig: AIConfig) {
 - skills: { categories: [{ id, name, skills: string[] }] }
 - projects: { items: [{ id, name, url, description, technologies, highlights }] }
 - certifications: { items: [{ id, name, issuer, date, url }] }
-- languages: { items: [{ id, language, proficiency }] }
+- languages: { items: [{ id, language, proficiency, description }] }
 - github: { items: [{ id, repoUrl, name, stars, language, description }] } — repoUrl/name/stars/language are READ-ONLY (auto-fetched from GitHub API), only modify description
 - custom: { items: [{ id, title, subtitle, date, description }] }
 Use field="items" or field="categories" to update list sections. Each item MUST include a unique "id" (use a UUID).`,

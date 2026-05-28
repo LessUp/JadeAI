@@ -9,7 +9,7 @@ import type {
   CustomContent,
   GitHubContent,
 } from '@/types/resume';
-import { esc, md, degreeField, getPersonalInfo, visibleSections, buildHighlights, buildQrCodesHtml, type ResumeWithSections, type Section } from '../utils';
+import { esc, md, degreeField, getPersonalInfo, visibleSections, buildHighlights, buildQrCodesHtml, buildGroupedSkillPillsHtml, type ResumeWithSections, type Section } from '../utils';
 
 function buildStartupSectionContent(section: Section, lang: string): string {
   const c = section.content as any;
@@ -33,9 +33,12 @@ function buildStartupSectionContent(section: Section, lang: string): string {
     </div>`).join('')}</div>`;
   }
   if (section.type === 'skills') {
-    return `<div class="flex flex-wrap gap-1.5">${((c as SkillsContent).categories || []).flatMap((cat: any) =>
-      (cat.skills || []).map((skill: string) => `<span class="rounded-full border px-3 py-1 text-xs font-medium" style="border-color:${PURPLE};color:${PURPLE}">${esc(skill)}</span>`)
-    ).join('')}</div>`;
+    return buildGroupedSkillPillsHtml(c as SkillsContent, {
+      labelStyle: `color:${PURPLE};`,
+      skillsGap: '6px',
+      pillClass: 'rounded-full border px-3 py-1 text-xs font-medium',
+      pillStyle: `border-color:${PURPLE};color:${PURPLE}`,
+    });
   }
   if (section.type === 'projects') {
     return `<div class="space-y-4">${((c as ProjectsContent).items || []).map((it: any) => `<div class="pl-4" style="border-left-width:3px;border-left-style:solid;border-color:${CYAN}">

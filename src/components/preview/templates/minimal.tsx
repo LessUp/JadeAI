@@ -4,6 +4,7 @@ import type { Resume, PersonalInfoContent, SummaryContent, WorkExperienceContent
 import { degreeField, isSectionEmpty, md } from '../utils';
 import { AvatarImage } from '../avatar-image';
 import { QrCodesPreview } from '../qr-codes-preview';
+import { GroupedSkillLines } from '../skill-categories';
 
 export function MinimalTemplate({ resume }: { resume: Resume }) {
   const personalInfo = resume.sections.find((s) => s.type === 'personal_info');
@@ -110,11 +111,11 @@ function MinimalSectionContent({ section, lang }: { section: any; lang?: string 
 
   if (section.type === 'skills') {
     return (
-      <div className="space-y-1">
-        {(content.categories || []).map((cat: any) => (
-          <p key={cat.id} className="text-sm text-zinc-600">{cat.skills?.join(' / ')}</p>
-        ))}
-      </div>
+      <GroupedSkillLines
+        content={content as SkillsContent}
+        labelClassName="text-zinc-700"
+        valueClassName="text-zinc-600"
+      />
     );
   }
 

@@ -4,6 +4,7 @@ import type { Resume, PersonalInfoContent, SummaryContent, WorkExperienceContent
 import { degreeField, isSectionEmpty, md } from '../utils';
 import { AvatarImage } from '../avatar-image';
 import { QrCodesPreview } from '../qr-codes-preview';
+import { GroupedSkillPills } from '../skill-categories';
 
 const CHARCOAL = '#2d3436';
 const EMERALD = '#00b894';
@@ -121,15 +122,12 @@ function ExecutiveSectionContent({ section, resume }: { section: any; resume: Re
 
   if (section.type === 'skills') {
     return (
-      <div className="flex flex-wrap gap-2">
-        {(content.categories || []).flatMap((cat: any) =>
-          (cat.skills || []).map((skill: string, i: number) => (
-            <span key={`${cat.id}-${i}`} className="rounded border px-2.5 py-1 text-xs font-medium" style={{ borderColor: EMERALD, color: CHARCOAL }}>
-              {skill}
-            </span>
-          ))
-        )}
-      </div>
+      <GroupedSkillPills
+        content={content as SkillsContent}
+        labelStyle={{ color: EMERALD }}
+        pillClassName="rounded border px-2.5 py-1 text-xs font-medium"
+        pillStyle={{ borderColor: EMERALD, color: CHARCOAL }}
+      />
     );
   }
 

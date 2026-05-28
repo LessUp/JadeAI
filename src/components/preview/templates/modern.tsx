@@ -4,6 +4,8 @@ import type { Resume, PersonalInfoContent, SummaryContent, WorkExperienceContent
 import { degreeField, isSectionEmpty, md } from '../utils';
 import { AvatarImage } from '../avatar-image';
 import { QrCodesPreview } from '../qr-codes-preview';
+import { GroupedSkillPills } from '../skill-categories';
+import { getLanguageDescriptionText } from '@/lib/language-description';
 
 export function ModernTemplate({ resume }: { resume: Resume }) {
   const personalInfo = resume.sections.find((s) => s.type === 'personal_info');
@@ -133,18 +135,11 @@ function ModernSectionContent({ section, lang }: { section: any; lang?: string }
 
   if (section.type === 'skills') {
     return (
-      <div className="flex flex-wrap gap-2">
-        {(content.categories || []).flatMap((cat: any) =>
-          (cat.skills || []).map((skill: string, i: number) => (
-            <span
-              key={`${cat.id || 'cat'}-${i}`}
-              className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700 transition-colors"
-            >
-              {skill}
-            </span>
-          ))
-        )}
-      </div>
+      <GroupedSkillPills
+        content={content as SkillsContent}
+        labelStyle={{ color: '#e94560' }}
+        pillClassName="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700 transition-colors"
+      />
     );
   }
 
@@ -221,9 +216,14 @@ function ModernSectionContent({ section, lang }: { section: any; lang?: string }
     return (
       <div className="flex flex-wrap gap-2">
         {items.map((item: any) => (
-          <span key={item.id} className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">
-            {item.language} <span className="text-zinc-400">— {item.proficiency}</span>
-          </span>
+          <div key={item.id} className="max-w-full space-y-1">
+            <span className="inline-flex max-w-full flex-wrap items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">
+              {item.language} <span className="text-zinc-400">— {item.proficiency}</span>
+            </span>
+            {getLanguageDescriptionText(item) && (
+              <p className="max-w-[320px] text-xs leading-5 text-zinc-500">{getLanguageDescriptionText(item)}</p>
+            )}
+          </div>
         ))}
       </div>
     );

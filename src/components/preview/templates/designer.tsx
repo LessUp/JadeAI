@@ -4,6 +4,7 @@ import type { Resume, PersonalInfoContent, SummaryContent, WorkExperienceContent
 import { AvatarImage } from '../avatar-image';
 import { degreeField, isSectionEmpty, md } from '../utils';
 import { QrCodesPreview } from '../qr-codes-preview';
+import { GroupedSkillPills } from '../skill-categories';
 
 const CORAL = '#ff6b6b';
 
@@ -120,15 +121,12 @@ function DesignerSectionContent({ section, resume }: { section: any; resume: Res
 
   if (section.type === 'skills') {
     return (
-      <div className="flex flex-wrap gap-2">
-        {(content.categories || []).flatMap((cat: any) =>
-          (cat.skills || []).map((skill: string, i: number) => (
-            <span key={`${cat.id}-${i}`} className="rounded-full px-3 py-1 text-xs font-medium text-white" style={{ background: CORAL }}>
-              {skill}
-            </span>
-          ))
-        )}
-      </div>
+      <GroupedSkillPills
+        content={content as SkillsContent}
+        labelStyle={{ color: CORAL }}
+        pillClassName="rounded-full px-3 py-1 text-xs font-medium text-white"
+        pillStyle={{ background: CORAL }}
+      />
     );
   }
 

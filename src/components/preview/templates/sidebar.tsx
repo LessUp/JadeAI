@@ -16,6 +16,7 @@ import type {
 import { AvatarImage } from '../avatar-image';
 import { degreeField, isSectionEmpty, md } from '../utils';
 import { QrCodesPreview } from '../qr-codes-preview';
+import { getLanguageDescriptionText } from '@/lib/language-description';
 
 const SIDEBAR_BG = '#1e40af';
 const ACCENT = '#3b82f6';
@@ -199,11 +200,16 @@ function SidebarSectionContent({ section }: { section: any }) {
   if (section.type === 'languages') {
     const items = (content as LanguagesContent).items || [];
     return (
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {items.map((item: any) => (
-          <div key={item.id} className="flex items-center justify-between text-xs">
-            <span className="text-blue-100">{item.language}</span>
-            <span className="text-blue-300">{item.proficiency}</span>
+          <div key={item.id} className="space-y-1">
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <span className="text-blue-100">{item.language}</span>
+              <span className="text-right text-blue-300">{item.proficiency}</span>
+            </div>
+            {getLanguageDescriptionText(item) && (
+              <p className="text-[10px] leading-4 text-blue-200">{getLanguageDescriptionText(item)}</p>
+            )}
           </div>
         ))}
       </div>

@@ -10,6 +10,7 @@ import type {
   GitHubContent,
 } from '@/types/resume';
 import { esc, md, degreeField, getPersonalInfo, visibleSections, buildHighlights, buildQrCodesHtml, type ResumeWithSections, type Section } from '../utils';
+import { getLanguageDescriptionText } from '@/lib/language-description';
 
 const SIDEBAR_BG = '#1e40af';
 const ACCENT = '#3b82f6';
@@ -27,7 +28,7 @@ function buildSidebarSectionContent(section: Section): string {
   }
   if (section.type === 'languages') {
     return `<div class="space-y-1.5">${((c as LanguagesContent).items || []).map((it: any) =>
-      `<div class="flex items-center justify-between text-xs"><span class="text-blue-100">${esc(it.language)}</span><span class="text-blue-300">${esc(it.proficiency)}</span></div>`
+      `<div class="space-y-1"><div class="flex items-center justify-between gap-3 text-xs"><span class="text-blue-100">${esc(it.language)}</span><span class="text-right text-blue-300">${esc(it.proficiency)}</span></div>${getLanguageDescriptionText(it) ? `<div class="text-[10px] leading-4 text-blue-200">${md(getLanguageDescriptionText(it))}</div>` : ''}</div>`
     ).join('')}</div>`;
   }
   if (section.type === 'certifications') {

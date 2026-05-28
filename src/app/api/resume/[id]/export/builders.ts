@@ -2,6 +2,7 @@ import { esc, buildExportThemeCSS, DEFAULT_THEME, type ResumeWithSections } from
 import { EXPORT_TAILWIND_CSS } from '@/lib/pdf/export-tailwind-css';
 import { BACKGROUND_TEMPLATES } from '@/lib/constants';
 import { getEmbeddedFontFacesCss } from '@/lib/font-stacks';
+import { normalizeLanguageDescriptionsForCompactTemplates } from '@/lib/language-description';
 import { generateQrSvg } from '@/lib/qrcode';
 import { buildClassicHtml } from './templates/classic';
 import { buildModernHtml } from './templates/modern';
@@ -167,18 +168,19 @@ export async function generateHtml(
   forPdf = false,
   fontBaseUrl = ''
 ): Promise<string> {
+  const safeResume = normalizeLanguageDescriptionsForCompactTemplates(resume);
   // Pre-generate QR SVGs so sync template builders can use them
-  await preGenerateQrSvgs(resume);
-  const builder = TEMPLATE_BUILDERS[resume.template] || buildClassicHtml;
-  const bodyHtml = builder(resume);
-  const theme = { ...DEFAULT_THEME, ...((resume as any).themeConfig || {}) };
-  const themeCSS = buildExportThemeCSS(theme, resume.template);
+  await preGenerateQrSvgs(safeResume);
+  const builder = TEMPLATE_BUILDERS[safeResume.template] || buildClassicHtml;
+  const bodyHtml = builder(safeResume);
+  const theme = { ...DEFAULT_THEME, ...((safeResume as any).themeConfig || {}) };
+  const themeCSS = buildExportThemeCSS(theme, safeResume.template);
   const embeddedFontsCss = getEmbeddedFontFacesCss(fontBaseUrl);
-  const isBackground = BACKGROUND_TEMPLATES.has(resume.template);
+  const isBackground = BACKGROUND_TEMPLATES.has(safeResume.template);
 
-  const fullDarkBg = FULL_DARK_TEMPLATES[resume.template];
+  const fullDarkBg = FULL_DARK_TEMPLATES[safeResume.template];
   const isFullDark = !!fullDarkBg;
-  const sidebarDark = SIDEBAR_DARK_TEMPLATES[resume.template];
+  const sidebarDark = SIDEBAR_DARK_TEMPLATES[safeResume.template];
   const isSidebarDark = !!sidebarDark;
 
   // Determine body background for PDF

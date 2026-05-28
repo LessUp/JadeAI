@@ -9,7 +9,7 @@ import type {
   CustomContent,
   GitHubContent,
 } from '@/types/resume';
-import { esc, md, degreeField, getPersonalInfo, visibleSections, buildHighlights, buildQrCodesHtml, type ResumeWithSections, type Section } from '../utils';
+import { esc, md, degreeField, getPersonalInfo, visibleSections, buildHighlights, buildQrCodesHtml, buildGroupedSkillPillsHtml, type ResumeWithSections, type Section } from '../utils';
 
 function buildDesignerSectionContent(section: Section, lang: string = 'en'): string {
   const c = section.content as any;
@@ -32,9 +32,11 @@ function buildDesignerSectionContent(section: Section, lang: string = 'en'): str
     </div>`).join('')}</div>`;
   }
   if (section.type === 'skills') {
-    return `<div class="flex flex-wrap gap-2">${((c as SkillsContent).categories || []).flatMap((cat: any) =>
-      (cat.skills || []).map((skill: string) => `<span class="rounded-full px-3 py-1 text-xs font-medium text-white" style="background:${CORAL}">${esc(skill)}</span>`)
-    ).join('')}</div>`;
+    return buildGroupedSkillPillsHtml(c as SkillsContent, {
+      labelStyle: `color:${CORAL};`,
+      pillClass: 'rounded-full px-3 py-1 text-xs font-medium text-white',
+      pillStyle: `background:${CORAL}`,
+    });
   }
   if (section.type === 'projects') {
     return `<div class="space-y-4">${((c as ProjectsContent).items || []).map((it: any) => `<div class="rounded-lg bg-zinc-50 p-4">
