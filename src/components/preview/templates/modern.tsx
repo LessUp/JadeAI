@@ -215,16 +215,18 @@ function ModernSectionContent({ section, lang }: { section: any; lang?: string }
     const items = (content as LanguagesContent).items || [];
     return (
       <div className="flex flex-wrap gap-2">
-        {items.map((item: any) => (
-          <div key={item.id} className="max-w-full space-y-1">
+        {items.map((item: any) => {
+          const description = getLanguageDescriptionText(item);
+          return (
+          <div key={item.id} className={description ? 'w-full max-w-full space-y-1' : 'max-w-full space-y-1'}>
             <span className="inline-flex max-w-full flex-wrap items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">
               {item.language} <span className="text-zinc-400">— {item.proficiency}</span>
             </span>
-            {getLanguageDescriptionText(item) && (
-              <p className="max-w-[320px] text-xs leading-5 text-zinc-500">{getLanguageDescriptionText(item)}</p>
+            {description && (
+              <p className="w-full text-xs leading-5 text-zinc-500">{description}</p>
             )}
           </div>
-        ))}
+        )})}
       </div>
     );
   }

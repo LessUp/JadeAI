@@ -82,6 +82,11 @@ test('modern preview renders language descriptions', () => {
   assert.match(html, /能熟练阅读英文技术文档与论文/);
 });
 
+test('modern preview language descriptions are not hard-capped to 320px', () => {
+  const html = renderToStaticMarkup(<ModernTemplate resume={createResume('modern')} />);
+  assert.doesNotMatch(html, /max-w-\[320px\]/);
+});
+
 test('sidebar preview renders language descriptions', () => {
   const html = renderToStaticMarkup(<SidebarTemplate resume={createResume('sidebar')} />);
   assert.match(html, /能熟练阅读英文技术文档与论文/);
@@ -90,6 +95,11 @@ test('sidebar preview renders language descriptions', () => {
 test('modern HTML export renders language descriptions', () => {
   const html = buildModernHtml(createResume('modern') as any);
   assert.match(html, /能熟练阅读英文技术文档与论文/);
+});
+
+test('modern HTML export language descriptions are not hard-capped to 320px', () => {
+  const html = buildModernHtml(createResume('modern') as any);
+  assert.doesNotMatch(html, /max-w-\[320px\]|max-width:320px/);
 });
 
 test('sidebar HTML export renders language descriptions', () => {
