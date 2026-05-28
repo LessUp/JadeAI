@@ -5,6 +5,7 @@ import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { translateInputSchema } from '@/lib/ai/translate-schema';
 import { extractJson } from '@/lib/ai/extract-json';
+import type { ResumeSection } from '@/types/resume';
 import { z } from 'zod/v4';
 
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
     }
 
     const allSections = sectionIds
-      ? workingSections.filter((s: any) => sectionIds.includes(s.id))
+      ? workingSections.filter((s: ResumeSection) => sectionIds.includes(s.id))
       : workingSections;
 
     if (allSections.length === 0) {
@@ -150,19 +151,20 @@ export async function POST(request: NextRequest) {
     // Save stripped fields so we can merge them back after translation
     const strippedFields = new Map<string, Record<string, unknown>>();
 
-    const sectionsData = allSections.map((s: any) => {
+    const sectionsData = allSections.map((s: ResumeSection) => {
       const fieldsToStrip = STRIP_FIELDS[s.type];
-      let content = s.content;
+      let content: unknown = s.content;
 
       if (fieldsToStrip && content && typeof content === 'object') {
         const saved: Record<string, unknown> = {};
-        content = { ...content };
+        const mutableContent = { ...(content as unknown as Record<string, unknown>) };
         for (const field of fieldsToStrip) {
-          if (field in content) {
-            saved[field] = content[field];
-            delete content[field];
+          if (field in mutableContent) {
+            saved[field] = mutableContent[field];
+            delete mutableContent[field];
           }
         }
+        content = mutableContent;
         if (Object.keys(saved).length > 0) {
           strippedFields.set(s.id, saved);
         }
@@ -245,7 +247,7 @@ export async function POST(request: NextRequest) {
         try {
           const updatedResume = await resumeRepository.findById(targetResumeId);
           const updatedSections = sectionIds
-            ? updatedResume?.sections.filter((s: any) => sectionIds.includes(s.id))
+            ? updatedResume?.sections.filter((s: ResumeSection) => sectionIds.includes(s.id))
             : updatedResume?.sections;
 
           send({

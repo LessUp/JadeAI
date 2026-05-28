@@ -5,12 +5,13 @@ import { InterviewRoom } from '@/components/interview/interview-room';
 import { useInterviewStore } from '@/stores/interview-store';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { UIMessage } from 'ai';
+import type { InterviewMessage } from '@/types/interview';
 
 /** Convert DB interview messages to UIMessage format for useChat */
-function dbMessagesToUIMessages(dbMessages: any[]): UIMessage[] {
+function dbMessagesToUIMessages(dbMessages: InterviewMessage[]): UIMessage[] {
   return dbMessages
-    .filter((m: any) => m.role !== 'system') // system messages are for AI context only
-    .map((m: any) => ({
+    .filter((m) => m.role !== 'system') // system messages are for AI context only
+    .map((m) => ({
       id: m.id,
       role: m.role === 'interviewer' ? 'assistant' as const : 'user' as const,
       parts: [{ type: 'text' as const, text: m.content }],

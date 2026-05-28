@@ -6,6 +6,7 @@ import { interviewRepository } from '@/lib/db/repositories/interview.repository'
 import { interviewReportSchema } from '@/lib/ai/interview-report-schema';
 import { extractJson } from '@/lib/ai/extract-json';
 import { dbReady } from '@/lib/db';
+import type { InterviewerConfig } from '@/types/interview';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const roundsWithMessages = await interviewRepository.findAllMessagesBySessionId(sessionId);
 
     const conversationLog = roundsWithMessages.map(({ round, messages }) => {
-      const config = round.interviewerConfig as any;
+      const config = round.interviewerConfig as InterviewerConfig;
       return {
         interviewerType: round.interviewerType,
         interviewerName: config.name,

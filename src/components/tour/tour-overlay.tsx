@@ -101,7 +101,8 @@ export function TourOverlay({ tourId, steps }: TourOverlayProps) {
   const isMyTour = isActive && activeTourId === tourId;
 
   useEffect(() => {
-    setMounted(true);
+    const frame = window.requestAnimationFrame(() => setMounted(true));
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   const updateRect = useCallback(() => {
@@ -120,10 +121,11 @@ export function TourOverlay({ tourId, steps }: TourOverlayProps) {
       nextStep();
       return;
     }
-    updateRect();
+    const frame = window.requestAnimationFrame(updateRect);
     window.addEventListener('resize', updateRect);
     window.addEventListener('scroll', updateRect, true);
     return () => {
+      window.cancelAnimationFrame(frame);
       window.removeEventListener('resize', updateRect);
       window.removeEventListener('scroll', updateRect, true);
     };

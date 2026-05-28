@@ -89,19 +89,54 @@ JadeAI is a full-stack application for resume editing, AI-assisted writing, and 
 cp .env.example .env.local
 # Set AUTH_SECRET at minimum
 
-docker build --pull -t jadeai-local:latest .
-
-docker run -d --name jadeai \
-  --restart unless-stopped \
-  --env-file .env.local \
-  -p 3000:3000 \
-  -v "$(pwd)/jadeai-data:/app/data" \
-  jadeai-local:latest
+pnpm docker:run
 ```
 
-Then open [http://localhost:3000](http://localhost:3000).
+By default this will:
+
+- build `jadeai-local:v<version>` and `jadeai-local:latest` from `package.json`
+- persist SQLite data in a Docker volume named `jadeai-data`
+- start the container on port `3003`, available at [http://localhost:3003](http://localhost:3003)
+
+If you only want to build the image:
+
+```bash
+pnpm docker:build
+```
+
+If you prefer a host bind mount for the database:
+
+```bash
+DATA_DIR="$(pwd)/jadeai-data" pnpm docker:run
+```
 
 > `AUTH_SECRET` is required. You can generate one with `openssl rand -base64 32`.
+>
+> The image now runs as a non-root user by default. If you use `DATA_DIR=...` and hit SQLite permission issues, make sure that directory is writable by container uid `1000`.
+
+### Docker Hub publishing and versioning
+
+Docker image tags now use `package.json` as the single source of truth:
+
+- Git tags, release notes, and Docker tags use `v<version>` such as `v0.3.7`
+- The publish script pushes `v<version>` and `<version>` for every release
+- Stable releases also publish `latest`, while prereleases such as `0.4.0-rc.1` do not overwrite `latest`
+
+Recommended release flow:
+
+```bash
+pnpm version patch --no-git-tag-version
+# then add changelog/YYYY-MM-DD-vX.Y.Z-release.md
+
+docker login
+IMAGE_REPOSITORY=lessup/jadeai pnpm docker:publish
+```
+
+The publish script uses `docker buildx` for `linux/amd64,linux/arm64` by default. For a local dry run:
+
+```bash
+PUSH=false PLATFORMS=linux/amd64 IMAGE_REPOSITORY=lessup/jadeai pnpm docker:publish
+```
 
 ### Local development
 

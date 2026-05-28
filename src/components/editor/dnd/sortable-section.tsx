@@ -5,12 +5,11 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 interface DragHandleContext {
-  attributes: Record<string, any>;
-  listeners: Record<string, Function> | undefined;
+  attributes?: ReturnType<typeof useSortable>['attributes'];
+  listeners?: ReturnType<typeof useSortable>['listeners'];
 }
 
 const DragHandleCtx = createContext<DragHandleContext>({
-  attributes: {},
   listeners: undefined,
 });
 

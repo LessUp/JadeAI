@@ -93,6 +93,9 @@ export default function DashboardPage() {
 
   // Hydrate view preference from localStorage on mount
   useEffect(() => {
+    // This is a client-only hydration step; we intentionally apply the stored
+    // view after mount to avoid server/client markup mismatches.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setViewMode(getInitialView());
   }, []);
 
@@ -109,7 +112,7 @@ export default function DashboardPage() {
     if (authEnabled || fingerprint) {
       fetchResumes();
     }
-  }, [fpLoading, fingerprint, fetchResumes]);
+  }, [authEnabled, fpLoading, fingerprint, fetchResumes]);
 
   // Filter and sort resumes
   const filteredResumes = useMemo(() => {

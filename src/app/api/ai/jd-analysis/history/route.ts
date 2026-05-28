@@ -4,6 +4,7 @@ import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { analysisRepository } from '@/lib/db/repositories/analysis.repository';
 
 export const dynamic = 'force-dynamic';
+type JdAnalysisRecord = Awaited<ReturnType<typeof analysisRepository.findJdAnalysesByResumeId>>[number];
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
     // List all
     const analyses = await analysisRepository.findJdAnalysesByResumeId(resumeId);
 
-    const list = analyses.map((a: any) => ({
+    const list = analyses.map((a: JdAnalysisRecord) => ({
       id: a.id,
       overallScore: a.overallScore,
       atsScore: a.atsScore,

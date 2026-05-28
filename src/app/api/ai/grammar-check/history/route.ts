@@ -4,6 +4,7 @@ import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { analysisRepository } from '@/lib/db/repositories/analysis.repository';
 
 export const dynamic = 'force-dynamic';
+type GrammarCheckRecord = Awaited<ReturnType<typeof analysisRepository.findGrammarChecksByResumeId>>[number];
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
     // List all
     const checks = await analysisRepository.findGrammarChecksByResumeId(resumeId);
 
-    const list = checks.map((c: any) => ({
+    const list = checks.map((c: GrammarCheckRecord) => ({
       id: c.id,
       score: c.score,
       issueCount: c.issueCount,

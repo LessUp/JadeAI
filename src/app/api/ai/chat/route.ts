@@ -9,6 +9,8 @@ import { createExecutableTools } from '@/lib/ai/tools';
 
 const MAX_ROUNDS = 10;
 const MAX_MESSAGES = MAX_ROUNDS * 2; // 10 rounds = 20 messages (user + assistant)
+type ToolCallLike = { toolName: string; input: unknown };
+type ToolResultLike = { output?: unknown };
 
 export async function POST(request: NextRequest) {
   try {
@@ -79,11 +81,14 @@ export async function POST(request: NextRequest) {
           const tcs = step.toolCalls ?? [];
           const trs = step.toolResults ?? [];
           for (let i = 0; i < tcs.length; i++) {
+            const toolCall = tcs[i] as ToolCallLike | undefined;
+            const toolResult = trs[i] as ToolResultLike | undefined;
+            if (!toolCall) continue;
             orderedParts.push({
               type: 'tool',
-              toolName: (tcs[i] as any).toolName,
-              args: (tcs[i] as any).input,
-              result: (trs[i] as any)?.output,
+              toolName: toolCall.toolName,
+              args: toolCall.input,
+              result: toolResult?.output,
             });
           }
         }

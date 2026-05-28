@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
 import { interviewRepository } from '@/lib/db/repositories/interview.repository';
 import { dbReady } from '@/lib/db';
+type InterviewRoundRecord = Awaited<ReturnType<typeof interviewRepository.findRoundsBySessionId>>[number];
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   // Include messages for each round (needed for resume/history)
   const roundsWithMessages = await Promise.all(
-    rounds.map(async (round: any) => {
+    rounds.map(async (round: InterviewRoundRecord) => {
       const messages = await interviewRepository.findMessagesByRoundId(round.id);
       return { ...round, messages };
     })

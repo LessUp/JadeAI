@@ -89,17 +89,26 @@ JadeAI 是一个面向简历编辑、AI 优化和求职准备的全栈应用。�
 cp .env.example .env.local
 # 至少设置 AUTH_SECRET；如需容器内直接启用 AI，设置 OPENAI_API_KEY / ANTHROPIC_API_KEY / GOOGLE_GENERATIVE_AI_API_KEY
 
-docker build --pull -t jadeai-local:latest .
-
-docker run -d --name jadeai \
-  --restart unless-stopped \
-  --env-file .env.local \
-  -p 3000:3000 \
-  -v "$(pwd)/jadeai-data:/app/data" \
-  jadeai-local:latest
+pnpm docker:run
 ```
 
-启动后访问 [http://localhost:3000](http://localhost:3000)。
+默认会：
+
+- 按 `package.json` 的版本号构建 `jadeai-local:v<version>` 与 `jadeai-local:latest`
+- 使用名为 `jadeai-data` 的 Docker volume 持久化 SQLite 数据
+- 在本机 `3003` 端口启动容器，访问 [http://localhost:3003](http://localhost:3003)
+
+如果你想只构建镜像，不启动容器：
+
+```bash
+pnpm docker:build
+```
+
+如果你想改为宿主机目录持久化数据库：
+
+```bash
+DATA_DIR="$(pwd)/jadeai-data" pnpm docker:run
+```
 
 > `AUTH_SECRET` 是必填项，可使用 `openssl rand -base64 32` 生成。
 >
@@ -112,6 +121,32 @@ docker run -d --name jadeai \
 > ```
 >
 > 也支持 `ANTHROPIC_API_KEY` 与 `GOOGLE_GENERATIVE_AI_API_KEY`；若未设置 `AI_PROVIDER`，应用会自动选择第一个已配置的服务端模型提供商。
+>
+> 镜像内应用默认以非 root 用户运行；如果你使用 `DATA_DIR=...` 绑定宿主机目录并遇到 SQLite 权限问题，请确保该目录对容器内 uid `1000` 可写。
+
+### Docker Hub 发布与版本号规范
+
+Docker 镜像版本现在统一以 `package.json` 的 `version` 为唯一来源：
+
+- Git tag / Release note / Docker tag 统一使用 `v<version>`，例如 `v0.3.7`
+- 发布脚本会同时推送 `v<version>`、`<version>`，稳定版本额外推送 `latest`
+- 预发布版本（如 `0.4.0-rc.1`）不会覆盖 `latest`
+
+建议发布流程：
+
+```bash
+pnpm version patch --no-git-tag-version
+# 然后补一份 changelog/YYYY-MM-DD-vX.Y.Z-release.md
+
+docker login
+IMAGE_REPOSITORY=lessup/jadeai pnpm docker:publish
+```
+
+发布脚本默认使用 `docker buildx` 生成 `linux/amd64,linux/arm64` 多架构镜像；如需先本地演练，可执行：
+
+```bash
+PUSH=false PLATFORMS=linux/amd64 IMAGE_REPOSITORY=lessup/jadeai pnpm docker:publish
+```
 
 ### 本地开发
 
