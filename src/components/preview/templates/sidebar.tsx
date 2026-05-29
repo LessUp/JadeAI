@@ -17,23 +17,13 @@ import { AvatarImage } from '../avatar-image';
 import { degreeField, isSectionEmpty, md } from '../utils';
 import { QrCodesPreview } from '../qr-codes-preview';
 import { getLanguageDescriptionText } from '@/lib/language-description';
+import { getSidebarTemplateModel } from '@/lib/resume-template-shared/sidebar';
 
 const SIDEBAR_BG = '#1e40af';
 const ACCENT = '#3b82f6';
 
-// Section types that go in the sidebar
-const SIDEBAR_TYPES = new Set(['skills', 'languages', 'certifications', 'custom']);
-
 export function SidebarTemplate({ resume }: { resume: Resume }) {
-  const personalInfo = resume.sections.find((s) => s.type === 'personal_info');
-  const pi = (personalInfo?.content || {}) as PersonalInfoContent;
-
-  const visibleSections = resume.sections.filter(
-    (s) => s.visible && s.type !== 'personal_info' && !isSectionEmpty(s)
-  );
-
-  const sidebarSections = visibleSections.filter((s) => SIDEBAR_TYPES.has(s.type));
-  const mainSections = visibleSections.filter((s) => !SIDEBAR_TYPES.has(s.type));
+  const { personalInfo: pi, sidebarSections, mainSections } = getSidebarTemplateModel(resume);
 
   return (
     <div className="mx-auto flex max-w-[210mm] overflow-hidden bg-white shadow-lg" style={{ fontFamily: 'Inter, sans-serif', minHeight: '297mm' }}>

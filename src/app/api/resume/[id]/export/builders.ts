@@ -1,8 +1,13 @@
-import { esc, buildExportThemeCSS, DEFAULT_THEME, type ResumeWithSections } from './utils';
+import { esc, buildExportThemeCSS, type ResumeWithSections } from './utils';
 import { EXPORT_TAILWIND_CSS } from '@/lib/pdf/export-tailwind-css';
-import { BACKGROUND_TEMPLATES } from '@/lib/constants';
 import { getEmbeddedFontFacesCss } from '@/lib/font-stacks';
 import { normalizeLanguageDescriptionsForCompactTemplates } from '@/lib/language-description';
+import {
+  getPdfBodyBackground,
+  getPdfLayoutDataAttributes,
+  getPdfLayoutProfile,
+} from '@/lib/pdf/layout-profile';
+import { mergeThemeConfig } from '@/lib/resume-theme/build-theme-css';
 import { generateQrSvg } from '@/lib/qrcode';
 import { buildClassicHtml } from './templates/classic';
 import { buildModernHtml } from './templates/modern';
@@ -60,22 +65,6 @@ import { buildCardHtml } from './templates/card';
 import { buildZigzagHtml } from './templates/zigzag';
 import { buildRibbonHtml } from './templates/ribbon';
 import { buildMosaicHtml } from './templates/mosaic';
-
-// Templates whose ENTIRE page is dark (not just header/sidebar).
-// Body background must match so the PDF page doesn't show white gaps.
-const FULL_DARK_TEMPLATES: Record<string, string> = {
-  neon: '#111827',
-};
-
-// Templates with a dark sidebar — body uses a horizontal gradient so the
-// sidebar colour fills every page edge-to-edge, even when the sidebar div
-// has no more content on later pages.  @page margin is 0 so there are no
-// white gaps between pages; text padding comes from the template's own p-*.
-const SIDEBAR_DARK_TEMPLATES: Record<string, { bg: string; width: string }> = {
-  'two-column': { bg: '#16213e', width: '35%' },
-  sidebar:      { bg: '#1e40af', width: '35%' },
-  coder:        { bg: '#0d1117', width: '32%' },
-};
 
 const TEMPLATE_BUILDERS: Record<string, (r: ResumeWithSections) => string> = {
   classic: buildClassicHtml,
@@ -173,38 +162,22 @@ export async function generateHtml(
   await preGenerateQrSvgs(safeResume);
   const builder = TEMPLATE_BUILDERS[safeResume.template] || buildClassicHtml;
   const bodyHtml = builder(safeResume);
-  const theme = { ...DEFAULT_THEME, ...((safeResume as any).themeConfig || {}) };
+  const theme = mergeThemeConfig((safeResume as any).themeConfig);
+  const layoutProfile = getPdfLayoutProfile(safeResume.template);
   const themeCSS = buildExportThemeCSS(theme, safeResume.template);
   const embeddedFontsCss = getEmbeddedFontFacesCss(fontBaseUrl);
-  const isBackground = BACKGROUND_TEMPLATES.has(safeResume.template);
+  const bodyBg = getPdfBodyBackground(layoutProfile);
 
-  const fullDarkBg = FULL_DARK_TEMPLATES[safeResume.template];
-  const isFullDark = !!fullDarkBg;
-  const sidebarDark = SIDEBAR_DARK_TEMPLATES[safeResume.template];
-  const isSidebarDark = !!sidebarDark;
-
-  // Determine body background for PDF
-  let bodyBg = 'white';
-  if (isFullDark) bodyBg = fullDarkBg;
-  else if (isSidebarDark) bodyBg = `linear-gradient(90deg, ${sidebarDark.bg} ${sidebarDark.width}, white ${sidebarDark.width})`;
-
-  // BACKGROUND/dark templates need edge-to-edge layout → @page margin:0
-  // Regular templates → @page margins for reliable pagination (clone reserves space at breaks,
-  // causing Chrome to push items to the next page even when they visually fit)
-  const needsEdgeToEdge = isFullDark || isSidebarDark || isBackground;
-  // Clone on the OUTER div — sidebar-dark templates only need clone on child divs (set below),
-  // putting clone on the outer flex container inflates the box at page breaks → blank pages.
-  const outerNeedsClone = isFullDark || (isBackground && !isSidebarDark);
   const pxToMm = (px: number) => Math.round((px / 3.78) * 10) / 10;
   const pageMarginTop = pxToMm(theme.margin.top);
   const pageMarginBottom = pxToMm(theme.margin.bottom);
 
   const pdfOverrides = forPdf
     ? `/* Page margins and fragmentation */
-       @page { margin: ${needsEdgeToEdge ? '0' : `${pageMarginTop}mm 0 ${pageMarginBottom}mm 0`}; }
+       @page { margin: ${layoutProfile.pageMode === 'edge-to-edge' ? '0' : `${pageMarginTop}mm 0 ${pageMarginBottom}mm 0`}; }
        html, body { background: ${bodyBg} !important; padding: 0 !important; margin: 0 !important; display: block !important; min-height: 100%; }
        .resume-export { width: 100%; }
-       .resume-export > div { box-shadow: none !important; overflow: visible !important; ${outerNeedsClone ? '-webkit-box-decoration-break: clone; box-decoration-break: clone;' : 'padding-top: 0 !important; padding-bottom: 0 !important;'} ${isSidebarDark ? 'min-height: auto !important; max-width: none !important; width: 100% !important; background: transparent !important;' : isBackground ? 'max-width: none !important; width: 100% !important;' : 'background: white !important;'} }
+       .resume-export > div { box-shadow: none !important; overflow: visible !important; ${layoutProfile.outerCloneMode === 'clone' ? '-webkit-box-decoration-break: clone; box-decoration-break: clone;' : layoutProfile.outerCloneMode === 'slice' ? '-webkit-box-decoration-break: slice; box-decoration-break: slice;' : 'padding-top: 0 !important; padding-bottom: 0 !important;'} ${layoutProfile.surfaceMode === 'sidebar-dark' ? 'min-height: auto !important; max-width: none !important; width: 100% !important; background: transparent !important;' : layoutProfile.pageMode === 'edge-to-edge' ? 'max-width: none !important; width: 100% !important;' : 'background: white !important;'} }
        /* Smart pagination: allow sections to break across pages, keep individual items together.
           overflow:visible is critical — Chrome treats overflow:hidden as monolithic (no page fragmentation). */
        [data-section] { break-inside: auto !important; overflow: visible !important; }
@@ -213,11 +186,11 @@ export async function generateHtml(
        [data-section] [class*="space-y"] > div, .item { break-inside: avoid !important; }
        h2, h3 { break-after: avoid !important; }
        p { orphans: 3; widows: 3; }
-       ${isSidebarDark ? `/* Sidebar dark: body gradient = sidebar colour every page.
+       ${layoutProfile.surfaceMode === 'sidebar-dark' && layoutProfile.sidebar ? `/* Sidebar dark: body gradient = sidebar colour every page.
           Sidebar uses slice to avoid clone rendering artifacts at page breaks.
           Content uses clone to replicate padding at page breaks. */
        .resume-export > div > div:first-child {
-         background: ${sidebarDark.bg} !important;
+         background: ${layoutProfile.sidebar.bg} !important;
          background-image: none !important;
          -webkit-box-decoration-break: slice !important;
          box-decoration-break: slice !important;
@@ -230,13 +203,13 @@ export async function generateHtml(
          box-decoration-break: clone;
          padding-top: 5mm !important;
          padding-bottom: 5mm !important;
-       }` : isBackground ? `/* Background templates: padding lives on child divs (e.g. p-8),
+       }` : layoutProfile.surfaceMode === 'background' ? `/* Background templates: padding lives on child divs (e.g. p-8),
           clone so padding replicates at each page break. */
        .resume-export > div > div {
          -webkit-box-decoration-break: clone;
          box-decoration-break: clone;
        }` : ''}
-       ${isFullDark ? `/* Full-dark: simulate @page margin via content padding */
+       ${layoutProfile.surfaceMode === 'full-dark' ? `/* Full-dark: simulate @page margin via content padding */
        .resume-export > div > *:last-child {
          padding: 12mm 10mm !important;
          -webkit-box-decoration-break: clone;
@@ -287,7 +260,7 @@ export async function generateHtml(
   </style>
 </head>
 <body>
-  <div class="resume-export" data-avatar-style="${esc((resume as any).themeConfig?.avatarStyle || 'oneInch')}">
+  <div class="resume-export" data-avatar-style="${esc((resume as any).themeConfig?.avatarStyle || 'oneInch')}" ${Object.entries(getPdfLayoutDataAttributes(layoutProfile)).map(([key, value]) => `${key}="${esc(value)}"`).join(' ')}>
     ${bodyHtml}
   </div>
 </body>

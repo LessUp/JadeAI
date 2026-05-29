@@ -6,10 +6,10 @@ import { AvatarImage } from '../avatar-image';
 import { QrCodesPreview } from '../qr-codes-preview';
 import { GroupedSkillPills } from '../skill-categories';
 import { getLanguageDescriptionText } from '@/lib/language-description';
+import { getModernTemplateModel } from '@/lib/resume-template-shared/modern';
 
 export function ModernTemplate({ resume }: { resume: Resume }) {
-  const personalInfo = resume.sections.find((s) => s.type === 'personal_info');
-  const pi = (personalInfo?.content || {}) as PersonalInfoContent;
+  const { personalInfo: pi, sections, contacts } = getModernTemplateModel(resume);
 
   return (
     <div className="mx-auto max-w-[210mm] overflow-hidden bg-white shadow-lg" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -40,7 +40,7 @@ export function ModernTemplate({ resume }: { resume: Resume }) {
               </p>
             )}
             <div className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] text-zinc-300">
-              {[pi.age, pi.politicalStatus, pi.gender, pi.ethnicity, pi.hometown, pi.maritalStatus, pi.yearsOfExperience, pi.educationLevel, pi.email, pi.phone, pi.wechat, pi.location, pi.website].filter(Boolean).map((item, i, arr) => (
+              {contacts.map((item, i, arr) => (
                 <span key={i} className="flex items-center gap-1.5">
                   {item}
                   {i < arr.length - 1 && <span className="text-zinc-500">|</span>}
@@ -58,9 +58,7 @@ export function ModernTemplate({ resume }: { resume: Resume }) {
       </div>
 
       <div className="p-8 pt-6">
-        {resume.sections
-          .filter((s) => s.visible && s.type !== 'personal_info' && !isSectionEmpty(s))
-          .map((section) => (
+        {sections.map((section) => (
             <div key={section.id} className="mb-6" data-section>
               <h2 className="mb-3 flex items-center gap-2.5 text-sm font-bold uppercase tracking-wider" style={{ color: '#e94560' }}>
                 <span className="h-[3px] w-7 rounded-full" style={{ background: 'linear-gradient(90deg, #e94560, #0f3460)' }} />
@@ -68,7 +66,7 @@ export function ModernTemplate({ resume }: { resume: Resume }) {
               </h2>
               <ModernSectionContent section={section} lang={resume.language} />
             </div>
-          ))}
+        ))}
       </div>
     </div>
   );

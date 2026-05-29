@@ -10,6 +10,7 @@ import type {
   CertificationsContent, LanguagesContent, CustomContent,
   GitHubContent, QrCodesContent,
 } from '@/types/resume';
+import { mergeThemeConfig } from '@/lib/resume-theme/build-theme-css';
 import QRCode from 'qrcode';
 import { type ResumeWithSections, getPersonalInfo, visibleSections, DEFAULT_THEME, safe } from './utils';
 import { resolveDocxFonts } from '@/lib/font-stacks';
@@ -156,7 +157,7 @@ function resolveTheme(cfg: unknown, template?: string): DocxTheme {
   // Merge: global defaults → template colors → user overrides
   const base = { ...DEFAULT_THEME } as Record<string, unknown>;
   if (tc?.accent && !userCfg.accentColor) base.accentColor = tc.accent;
-  const t = { ...base, ...userCfg } as typeof DEFAULT_THEME;
+  const t = mergeThemeConfig({ ...(base as Partial<typeof DEFAULT_THEME>), ...(userCfg as Partial<typeof DEFAULT_THEME>) });
 
   const fs = FONT_SIZES[t.fontSize] || FONT_SIZES.medium;
   const primary = strip(t.primaryColor);

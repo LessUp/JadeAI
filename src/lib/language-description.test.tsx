@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { Resume } from '@/types/resume';
 import { ModernTemplate } from '@/components/preview/templates/modern';
 import { SidebarTemplate } from '@/components/preview/templates/sidebar';
+import { generateHtml } from '@/app/api/resume/[id]/export/builders';
 import { buildModernHtml } from '@/app/api/resume/[id]/export/templates/modern';
 import { buildSidebarHtml } from '@/app/api/resume/[id]/export/templates/sidebar';
 import { generatePlainText } from '@/app/api/resume/[id]/export/plain-text';
@@ -105,6 +106,27 @@ test('modern HTML export language descriptions are not hard-capped to 320px', ()
 test('sidebar HTML export renders language descriptions', () => {
   const html = buildSidebarHtml(createResume('sidebar') as any);
   assert.match(html, /能熟练阅读英文技术文档与论文/);
+});
+
+test('generateHtml fills missing theme margin defaults for export CSS', async () => {
+  const resume = createResume('classic');
+  resume.themeConfig = {
+    primaryColor: '#111111',
+    accentColor: '#ef4444',
+    fontFamily: 'Inter',
+    fontSize: 'medium',
+    lineSpacing: 1.5,
+    margin: { top: 32 } as any,
+    sectionSpacing: 16,
+    avatarStyle: 'oneInch',
+  };
+
+  const html = await generateHtml(resume as any, true);
+
+  assert.match(html, /--base-margin-top: 32px;/);
+  assert.match(html, /--base-margin-right: 20px;/);
+  assert.match(html, /--base-margin-bottom: 20px;/);
+  assert.match(html, /--base-margin-left: 20px;/);
 });
 
 test('plain-text export renders language descriptions', () => {

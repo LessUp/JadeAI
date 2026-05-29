@@ -9,13 +9,20 @@ import type {
   CustomContent,
   GitHubContent,
 } from '@/types/resume';
-import { esc, md, degreeField, getPersonalInfo, visibleSections, buildHighlights, buildQrCodesHtml, type ResumeWithSections, type Section } from '../utils';
+import {
+  esc,
+  md,
+  degreeField,
+  buildHighlights,
+  buildQrCodesHtml,
+  type ResumeWithSections,
+  type Section,
+} from '../utils';
 import { getLanguageDescriptionText } from '@/lib/language-description';
+import { getSidebarTemplateModel } from '@/lib/resume-template-shared/sidebar';
 
 const SIDEBAR_BG = '#1e40af';
 const ACCENT = '#3b82f6';
-
-const SIDEBAR_TYPES = new Set(['skills', 'languages', 'certifications', 'custom']);
 
 function buildSidebarSectionContent(section: Section): string {
   const c = section.content as any;
@@ -112,11 +119,8 @@ function buildSidebarMainContent(section: Section, lang: string = 'en'): string 
 }
 
 export function buildSidebarHtml(resume: ResumeWithSections): string {
-  const pi = getPersonalInfo(resume);
-  const sections = visibleSections(resume);
+  const { personalInfo: pi, sidebarSections, mainSections } = getSidebarTemplateModel(resume);
   const lang = resume.language || 'en';
-  const sidebarSections = sections.filter(s => SIDEBAR_TYPES.has(s.type));
-  const mainSections = sections.filter(s => !SIDEBAR_TYPES.has(s.type));
 
   return `<div class="mx-auto flex max-w-[210mm] overflow-hidden bg-white shadow-lg" style="font-family:Inter,sans-serif;min-height:297mm">
     <div class="w-[35%] shrink-0 p-6 text-white" style="background-color:${SIDEBAR_BG}">

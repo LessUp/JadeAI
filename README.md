@@ -68,6 +68,7 @@ JadeAI 是一个面向简历编辑、AI 优化和求职准备的全栈应用。�
 - **多格式导出**：PDF、智能一页 PDF、DOCX、HTML、TXT、JSON
 - **JSON 导入**：可恢复现有简历或创建新简历
 - **分享链接**：支持密码保护与访问统计
+- **本地 PDF 渲染依赖**：优先使用系统 Chrome / Chromium；如未找到，会提示并回退到 bundled Chromium。可通过 `CHROME_PATH` 显式指定浏览器路径以避免运行时下载。
 
 ## 技术栈
 

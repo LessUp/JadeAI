@@ -9,8 +9,18 @@ import type {
   CustomContent,
   GitHubContent,
 } from '@/types/resume';
-import { esc, md, degreeField, getPersonalInfo, visibleSections, buildHighlights, buildQrCodesHtml, buildGroupedSkillPillsHtml, type ResumeWithSections, type Section } from '../utils';
+import {
+  esc,
+  md,
+  degreeField,
+  buildHighlights,
+  buildQrCodesHtml,
+  buildGroupedSkillPillsHtml,
+  type ResumeWithSections,
+  type Section,
+} from '../utils';
 import { getLanguageDescriptionText } from '@/lib/language-description';
+import { getModernTemplateModel } from '@/lib/resume-template-shared/modern';
 
 function buildModernSectionContent(section: Section, lang: string = 'en'): string {
   const c = section.content as any;
@@ -79,9 +89,7 @@ function buildModernSectionContent(section: Section, lang: string = 'en'): strin
 }
 
 export function buildModernHtml(resume: ResumeWithSections): string {
-  const pi = getPersonalInfo(resume);
-  const sections = visibleSections(resume);
-  const contacts = [pi.age, pi.politicalStatus, pi.gender, pi.ethnicity, pi.hometown, pi.maritalStatus, pi.yearsOfExperience, pi.educationLevel, pi.email, pi.phone, pi.wechat, pi.location, pi.website].filter(Boolean);
+  const { personalInfo: pi, sections, contacts } = getModernTemplateModel(resume);
 
   return `<div class="mx-auto max-w-[210mm] bg-white shadow-lg" style="font-family:Inter,sans-serif">
     <div class="relative overflow-hidden px-10 py-8 text-white" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)">
