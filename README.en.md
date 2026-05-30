@@ -129,13 +129,13 @@ pnpm version patch --no-git-tag-version
 # then add changelog/YYYY-MM-DD-vX.Y.Z-release.md
 
 docker login
-IMAGE_REPOSITORY=lessup/jadeai pnpm docker:publish
+IMAGE_REPOSITORY=shuai0/jadeai pnpm docker:publish
 ```
 
 The publish script uses `docker buildx` for `linux/amd64,linux/arm64` by default. For a local dry run:
 
 ```bash
-PUSH=false PLATFORMS=linux/amd64 IMAGE_REPOSITORY=lessup/jadeai pnpm docker:publish
+PUSH=false PLATFORMS=linux/amd64 IMAGE_REPOSITORY=shuai0/jadeai pnpm docker:publish
 ```
 
 ### Local development

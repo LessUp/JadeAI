@@ -141,13 +141,13 @@ pnpm version patch --no-git-tag-version
 # 然后补一份 changelog/YYYY-MM-DD-vX.Y.Z-release.md
 
 docker login
-IMAGE_REPOSITORY=lessup/jadeai pnpm docker:publish
+IMAGE_REPOSITORY=shuai0/jadeai pnpm docker:publish
 ```
 
 发布脚本默认使用 `docker buildx` 生成 `linux/amd64,linux/arm64` 多架构镜像；如需先本地演练，可执行：
 
 ```bash
-PUSH=false PLATFORMS=linux/amd64 IMAGE_REPOSITORY=lessup/jadeai pnpm docker:publish
+PUSH=false PLATFORMS=linux/amd64 IMAGE_REPOSITORY=shuai0/jadeai pnpm docker:publish
 ```
 
 ### 本地开发

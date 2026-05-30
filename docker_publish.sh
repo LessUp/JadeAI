@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 APP_VERSION="$(node -e "console.log(require(process.argv[1]).version)" "$SCRIPT_DIR/package.json")"
-IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-lessup/jadeai}"
+IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-shuai0/jadeai}"
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
 PUSH="${PUSH:-true}"
 BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
