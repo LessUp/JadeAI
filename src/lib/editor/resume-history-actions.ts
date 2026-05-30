@@ -10,7 +10,15 @@ import {
   cloneResumeDraftSnapshot,
   createResumeDraftSnapshot,
 } from './resume-draft';
-import { saveResumeVersion } from './resume-version-history';
+import {
+  getResumeVersion,
+  saveResumeVersion,
+} from './resume-version-history';
+import {
+  executeResumeRestore,
+  type ExecuteResumeRestoreArgs,
+  type RestoreResumeVersionResult,
+} from './restore-resume-version';
 
 interface ApplyDraftOptions {
   recordHistory?: boolean;
@@ -144,21 +152,58 @@ export async function syncResumeFromServer(
   }
 }
 
+type RestoreResumeVersionDependencies = {
+  getResumeVersion: (versionId: string) => Promise<ResumeVersionRecord | null>;
+  executeResumeRestore: (
+    args: ExecuteResumeRestoreArgs
+  ) => Promise<RestoreResumeVersionResult>;
+  saveCurrentResumeVersion: typeof saveCurrentResumeVersion;
+  applyResumeDraftSnapshot: typeof applyResumeDraftSnapshot;
+  getResumeStoreState: () => Pick<ReturnType<typeof useResumeStore.getState>, 'currentResume' | 'save'>;
+};
+
+const defaultRestoreResumeVersionDependencies: RestoreResumeVersionDependencies = {
+  getResumeVersion,
+  executeResumeRestore,
+  saveCurrentResumeVersion,
+  applyResumeDraftSnapshot,
+  getResumeStoreState: useResumeStore.getState,
+};
+
+export async function restoreResumeVersionById(
+  versionId: string,
+  dependencies: RestoreResumeVersionDependencies = defaultRestoreResumeVersionDependencies
+) {
+  const version = await dependencies.getResumeVersion(versionId);
+  if (!version) {
+    throw new Error(`Resume version not found: ${versionId}`);
+  }
+
+  return await dependencies.executeResumeRestore({
+    readCurrentDraft: async () => {
+      const currentResume = dependencies.getResumeStoreState().currentResume;
+      return currentResume ? createResumeDraftSnapshot(currentResume) : null;
+    },
+    targetDraft: version.snapshot,
+    saveBackupVersion: async () => {
+      await dependencies.saveCurrentResumeVersion('restore');
+    },
+    applyTargetDraft: async (draft) => {
+      dependencies.applyResumeDraftSnapshot(draft, {
+        recordHistory: true,
+        markDirty: true,
+        clearPendingSave: true,
+      });
+    },
+    persistRestoredDraft: async () => {
+      await dependencies.getResumeStoreState().save({
+        source: 'restore',
+        forceVersion: true,
+      });
+    },
+  });
+}
+
 export async function restoreResumeVersion(version: ResumeVersionRecord) {
-  await saveCurrentResumeVersion('restore');
-
-  applyResumeDraftSnapshot(version.snapshot, {
-    recordHistory: true,
-    scheduleSave: false,
-    markDirty: true,
-    clearPendingSave: true,
-    source: 'restore',
-  });
-
-  // Restore should persist immediately so the recovered version and its
-  // follow-up history entry survive even when autosave is disabled.
-  await useResumeStore.getState().save({
-    source: 'restore',
-    forceVersion: true,
-  });
+  return await restoreResumeVersionById(version.id);
 }

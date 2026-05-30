@@ -72,6 +72,21 @@ export async function listResumeVersions(resumeId: string): Promise<ResumeVersio
   }
 }
 
+export async function getResumeVersion(versionId: string): Promise<ResumeVersionRecord | null> {
+  const db = await openVersionDb();
+
+  try {
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const record = await requestToPromise(store.get(versionId));
+    await transactionToPromise(transaction);
+
+    return (record as ResumeVersionRecord | undefined) ?? null;
+  } finally {
+    db.close();
+  }
+}
+
 export async function saveResumeVersion(input: {
   resumeId: string;
   snapshot: ResumeDraftSnapshot;
