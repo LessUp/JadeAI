@@ -16,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import type { ResumeVersionRecord, ResumeVersionSource } from '@/types/editor';
 import { listResumeVersions } from '@/lib/editor/resume-version-history';
-import { restoreResumeVersion } from '@/lib/editor/resume-history-actions';
+import { restoreResumeVersionById as restoreResumeVersion } from '@/lib/editor/resume-history-actions';
 
 interface VersionHistoryDialogProps {
   open: boolean;
@@ -79,12 +79,21 @@ export function VersionHistoryDialog({
   const handleRestore = useCallback(async (version: ResumeVersionRecord) => {
     setRestoringId(version.id);
     try {
-      await restoreResumeVersion(version);
+      const result = await restoreResumeVersion(version.id);
+      if (result.status === 'noop') {
+        toast.info(t('restoreNoop'));
+        return;
+      }
+
       toast.success(t('restoreSuccess'));
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to restore local resume version:', error);
-      toast.error(error instanceof Error ? error.message : t('restoreError'));
+      const message =
+        error instanceof Error && /restore verification failed/i.test(error.message)
+          ? t('restoreVerificationFailed')
+          : t('restoreError');
+      toast.error(message);
     } finally {
       setRestoringId(null);
     }
