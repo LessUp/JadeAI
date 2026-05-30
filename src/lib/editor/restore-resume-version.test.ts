@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { executeResumeRestore } from './restore-resume-version';
 import type { ResumeDraftSnapshot } from '@/types/editor';
 
 function makeDraft(title: string): ResumeDraftSnapshot {
@@ -14,6 +13,7 @@ function makeDraft(title: string): ResumeDraftSnapshot {
 }
 
 test('restores a different snapshot and persists it after verification', async () => {
+  const { executeResumeRestore } = await import('./restore-resume-version');
   const calls: string[] = [];
   let currentDraft = makeDraft('current');
   const targetDraft = makeDraft('target');
@@ -38,6 +38,7 @@ test('restores a different snapshot and persists it after verification', async (
 });
 
 test('returns noop when restoring the already-current snapshot', async () => {
+  const { executeResumeRestore } = await import('./restore-resume-version');
   const currentDraft = makeDraft('same');
   let persisted = false;
 
@@ -60,6 +61,7 @@ test('returns noop when restoring the already-current snapshot', async () => {
 });
 
 test('throws when apply completes but current draft still does not match target', async () => {
+  const { executeResumeRestore } = await import('./restore-resume-version');
   const currentDraft = makeDraft('before');
   await assert.rejects(
     () =>
