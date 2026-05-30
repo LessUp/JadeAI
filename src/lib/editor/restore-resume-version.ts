@@ -7,7 +7,7 @@ export type RestoreResumeVersionResult =
   | { status: 'noop'; reason: 'already-current' }
   | { status: 'restored' };
 
-type ExecuteResumeRestoreArgs = {
+export type ExecuteResumeRestoreArgs = {
   readCurrentDraft: () => Promise<ResumeDraftSnapshot | null>;
   targetDraft: ResumeDraftSnapshot;
   saveBackupVersion: () => Promise<void>;
