@@ -1,4 +1,4 @@
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, desc, sql, and } from 'drizzle-orm';
 import { db } from '../index';
 import { resumes, resumeSections } from '../schema';
 
@@ -11,6 +11,21 @@ export const resumeRepository = {
     const resume = await db.select().from(resumes).where(eq(resumes.id, id)).limit(1);
     if (!resume[0]) return null;
     const sections = await db.select().from(resumeSections).where(eq(resumeSections.resumeId, id)).orderBy(resumeSections.sortOrder);
+    return { ...resume[0], sections };
+  },
+
+  async findByIdForUser(id: string, userId: string) {
+    const resume = await db
+      .select()
+      .from(resumes)
+      .where(and(eq(resumes.id, id), eq(resumes.userId, userId)))
+      .limit(1);
+    if (!resume[0]) return null;
+    const sections = await db
+      .select()
+      .from(resumeSections)
+      .where(eq(resumeSections.resumeId, id))
+      .orderBy(resumeSections.sortOrder);
     return { ...resume[0], sections };
   },
 

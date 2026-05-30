@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { SendHorizonal } from 'lucide-react';
+import { SendHorizonal, Square } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { FormEvent, ChangeEvent } from 'react';
 
@@ -13,9 +13,10 @@ interface AIInputProps {
   models: string[];
   selectedModel?: string;
   onModelChange: (model: string) => void;
+  onStop: () => void;
 }
 
-export function AIInput({ input, onChange, onSubmit, isLoading, models, selectedModel, onModelChange }: AIInputProps) {
+export function AIInput({ input, onChange, onSubmit, isLoading, models, selectedModel, onModelChange, onStop }: AIInputProps) {
   const t = useTranslations('ai');
 
   return (
@@ -62,13 +63,24 @@ export function AIInput({ input, onChange, onSubmit, isLoading, models, selected
           </div>
 
           {/* Send button */}
-          <button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-40 [&:not(:disabled)]:bg-brand [&:not(:disabled)]:text-white [&:not(:disabled)]:hover:bg-brand-hover"
-          >
-            <SendHorizonal className="h-4 w-4" />
-          </button>
+          {isLoading ? (
+            <button
+              type="button"
+              onClick={onStop}
+              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-amber-100 text-amber-700 transition-colors hover:bg-amber-200"
+              title={t('stop')}
+            >
+              <Square className="h-3.5 w-3.5 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!input.trim()}
+              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-40 [&:not(:disabled)]:bg-brand [&:not(:disabled)]:text-white [&:not(:disabled)]:hover:bg-brand-hover"
+            >
+              <SendHorizonal className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
     </form>

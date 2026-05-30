@@ -1,12 +1,11 @@
 'use client';
-
-import type { UIMessage } from 'ai';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useResumeStore } from '@/stores/resume-store';
 import { useSettingsStore, getAIHeaders } from '@/stores/settings-store';
 import { generateId } from '@/lib/utils';
+import type { AIChatStatus, AIChatUIMessage } from '@/types/ai';
 import {
   saveCurrentResumeVersion,
   syncResumeFromServer,
@@ -15,7 +14,7 @@ import {
 interface UseAIChatOptions {
   resumeId: string;
   sessionId?: string;
-  initialMessages?: UIMessage[];
+  initialMessages?: AIChatUIMessage[];
   selectedModel?: string;
 }
 
@@ -30,7 +29,9 @@ function isCompletedToolPart(part: unknown): boolean {
 
 export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel }: UseAIChatOptions) {
   const [input, setInput] = useState('');
-  const [localMessages, setLocalMessages] = useState<UIMessage[]>([]);
+  const [localMessages, setLocalMessages] = useState<AIChatUIMessage[]>([]);
+  const [lastTerminalStatus, setLastTerminalStatus] = useState<AIChatStatus | undefined>();
+  const [terminalSessionId, setTerminalSessionId] = useState<string | undefined>();
 
   const transport = useMemo(
     () =>
@@ -47,12 +48,15 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
     [resumeId, selectedModel, sessionId]
   );
 
-  const { messages, sendMessage, status, error, setMessages } = useChat({
+  const { messages, sendMessage, status, error, setMessages, stop, clearError } = useChat<AIChatUIMessage>({
     id: sessionId,
     transport,
   });
 
   const isLoading = status === 'streaming' || status === 'submitted';
+  const terminalStatus = terminalSessionId === sessionId
+    ? lastTerminalStatus || (status === 'error' ? 'error' : status === 'ready' && terminalSessionId ? 'completed' : undefined)
+    : undefined;
 
   // Track completed tool call count to detect new tool results
   const completedToolCountRef = useRef(0);
@@ -122,12 +126,12 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
     // Check if API key is configured
     const { aiApiKey, serverAIConfigured } = useSettingsStore.getState();
     if (!aiApiKey && !serverAIConfigured) {
-      const userMsg: UIMessage = {
+      const userMsg: AIChatUIMessage = {
         id: generateId(),
         role: 'user',
         parts: [{ type: 'text', text: input }],
       };
-      const errorMsg: UIMessage = {
+      const errorMsg: AIChatUIMessage = {
         id: generateId(),
         role: 'assistant',
         parts: [{ type: 'text', text: '__API_KEY_MISSING__' }],
@@ -143,9 +147,12 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
       setLocalMessages([]);
     }
 
+    clearError();
+    setTerminalSessionId(sessionId);
+    setLastTerminalStatus(undefined);
     sendMessage({ text: input });
     setInput('');
-  }, [input, sendMessage, localMessages]);
+  }, [clearError, input, localMessages, sendMessage, sessionId]);
 
   // Merge real chat messages with local-only display messages
   const allMessages = useMemo(
@@ -156,7 +163,20 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
   const clearMessages = useCallback(() => {
     setMessages([]);
     setLocalMessages([]);
+    setTerminalSessionId(undefined);
+    setLastTerminalStatus(undefined);
   }, [setMessages]);
+
+  const stopStreaming = useCallback(() => {
+    setTerminalSessionId(sessionId);
+    setLastTerminalStatus('aborted');
+    stop();
+  }, [sessionId, stop]);
+
+  const resetTerminalState = useCallback(() => {
+    setTerminalSessionId(undefined);
+    setLastTerminalStatus(undefined);
+  }, []);
 
   return {
     messages: allMessages,
@@ -166,7 +186,10 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
     isLoading,
     status,
     error,
+    lastTerminalStatus: terminalStatus,
     clearMessages,
     sendMessage,
+    stopStreaming,
+    resetTerminalState,
   };
 }

@@ -1,8 +1,8 @@
 'use client';
 
-import type { UIMessage } from 'ai';
 import { useCallback, useRef, useState } from 'react';
 import { dbMessagesToUIMessages } from '@/lib/ai/utils';
+import type { AIChatUIMessage } from '@/types/ai';
 
 function getHeaders(): Record<string, string> {
   const fp = typeof window !== 'undefined' ? localStorage.getItem('jade_fingerprint') : null;
@@ -10,14 +10,14 @@ function getHeaders(): Record<string, string> {
 }
 
 export function useMessagePagination() {
-  const [historicalMessages, setHistoricalMessages] = useState<UIMessage[]>([]);
+  const [historicalMessages, setHistoricalMessages] = useState<AIChatUIMessage[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const nextCursorRef = useRef<string | undefined>(undefined);
   const activeSessionIdRef = useRef<string | undefined>(undefined);
   const abortRef = useRef<AbortController | null>(null);
 
-  const loadInitial = useCallback(async (sessionId: string): Promise<UIMessage[]> => {
+  const loadInitial = useCallback(async (sessionId: string): Promise<AIChatUIMessage[]> => {
     // Abort any in-flight request
     abortRef.current?.abort();
     const controller = new AbortController();

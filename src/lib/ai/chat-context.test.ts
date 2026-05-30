@@ -266,3 +266,67 @@ test('legacy toolCalls history uses documented old tool format', async () => {
   assert.equal(modelMessages[2]?.role, 'tool');
   assert.equal(modelMessages[3]?.role, 'assistant');
 });
+
+test('resumed history preserves tool error state instead of fabricating success', () => {
+  const resumedMessages = dbMessagesToUIMessages([
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: '',
+      metadata: {
+        status: 'error',
+        errorText: 'Tool request timed out',
+        orderedParts: [
+          { type: 'step-start' },
+          {
+            type: 'tool',
+            toolName: 'translateResume',
+            state: 'output-error',
+            args: { targetLanguage: 'en' },
+            errorText: 'Tool request timed out',
+          },
+        ],
+      },
+      createdAt: Date.now(),
+    },
+  ]);
+
+  const assistantMessage = resumedMessages[0] as UIMessage & {
+    metadata?: { status?: string; errorText?: string };
+  };
+  const toolPart = assistantMessage.parts[1] as {
+    state?: string;
+    errorText?: string;
+    output?: unknown;
+  };
+
+  assert.equal(assistantMessage.metadata?.status, 'error');
+  assert.equal(assistantMessage.metadata?.errorText, 'Tool request timed out');
+  assert.equal(toolPart.state, 'output-error');
+  assert.equal(toolPart.errorText, 'Tool request timed out');
+  assert.equal(toolPart.output, undefined);
+});
+
+test('resumed pending assistant metadata survives even without text parts', () => {
+  const resumedMessages = dbMessagesToUIMessages([
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: '',
+      metadata: {
+        status: 'submitted',
+        startedAt: 1234567890,
+        orderedParts: [],
+      },
+      createdAt: Date.now(),
+    },
+  ]);
+
+  const assistantMessage = resumedMessages[0] as UIMessage & {
+    metadata?: { status?: string; startedAt?: number };
+  };
+
+  assert.equal(assistantMessage.metadata?.status, 'submitted');
+  assert.equal(assistantMessage.metadata?.startedAt, 1234567890);
+  assert.deepEqual(assistantMessage.parts, []);
+});

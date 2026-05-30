@@ -5,7 +5,25 @@ import { getModel, getJsonProviderOptions, type AIConfig } from '@/lib/ai/provid
 import { jdAnalysisOutputSchema } from '@/lib/ai/jd-analysis-schema';
 import { extractJson } from '@/lib/ai/extract-json';
 
-export function createExecutableTools(resumeId: string, aiConfig: AIConfig) {
+const STREAM_TOOL_TIMEOUT_MS = 60_000;
+const GITHUB_FETCH_TIMEOUT_MS = 15_000;
+
+function withTimeoutSignal(timeoutMs: number, abortSignal?: AbortSignal) {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  return abortSignal ? AbortSignal.any([abortSignal, timeoutSignal]) : timeoutSignal;
+}
+
+export function createExecutableTools({
+  resumeId,
+  aiConfig,
+  userId,
+  abortSignal,
+}: {
+  resumeId: string;
+  aiConfig: AIConfig;
+  userId: string;
+  abortSignal?: AbortSignal;
+}) {
   return {
     updateSection: tool({
       description: `Update the content of a specific resume section. Section content structures:
@@ -26,7 +44,7 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
         value: z.string().describe('The new value for the field. For complex values (arrays, objects), pass a JSON string.'),
       }),
       execute: async ({ sectionId, field, value }) => {
-        const resume = await resumeRepository.findById(resumeId);
+        const resume = await resumeRepository.findByIdForUser(resumeId, userId);
         if (!resume) return { success: false, error: 'Resume not found' };
 
         const section = resume.sections.find((s: any) => s.id === sectionId);
@@ -90,6 +108,7 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
                   const repoName = match[2].replace(/\.git$/, '');
                   const ghRes = await fetch(`https://api.github.com/repos/${match[1]}/${repoName}`, {
                     headers: { Accept: 'application/vnd.github.v3+json' },
+                    signal: withTimeoutSignal(GITHUB_FETCH_TIMEOUT_MS, abortSignal),
                   });
                   if (ghRes.ok) {
                     const gh = await ghRes.json();
@@ -117,7 +136,7 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
         content: z.string().optional().describe('Initial content as a JSON string. Defaults to empty structure.'),
       }),
       execute: async ({ type, title, content }) => {
-        const resume = await resumeRepository.findById(resumeId);
+        const resume = await resumeRepository.findByIdForUser(resumeId, userId);
         if (!resume) return { success: false, error: 'Resume not found' };
 
         const maxOrder = resume.sections.reduce((max: number, s: any) => Math.max(max, s.sortOrder), -1);
@@ -153,7 +172,7 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
         improvedText: z.string().describe('The improved text to replace the original'),
       }),
       execute: async ({ sectionId, field, improvedText }) => {
-        const resume = await resumeRepository.findById(resumeId);
+        const resume = await resumeRepository.findByIdForUser(resumeId, userId);
         if (!resume) return { success: false, error: 'Resume not found' };
 
         const section = resume.sections.find((s: any) => s.id === sectionId);
@@ -173,7 +192,7 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
         category: z.string().describe('The skill category name'),
       }),
       execute: async ({ skills, category }) => {
-        const resume = await resumeRepository.findById(resumeId);
+        const resume = await resumeRepository.findByIdForUser(resumeId, userId);
         if (!resume) return { success: false, error: 'Resume not found' };
 
         const skillsSection = resume.sections.find((s: any) => s.type === 'skills');
@@ -202,7 +221,7 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
         jobDescription: z.string().describe('The job description text to analyze against the resume'),
       }),
       execute: async ({ jobDescription }) => {
-        const resume = await resumeRepository.findById(resumeId);
+        const resume = await resumeRepository.findByIdForUser(resumeId, userId);
         if (!resume) return { success: false, error: 'Resume not found' };
 
         const model = getModel(aiConfig);
@@ -215,6 +234,8 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
 CRITICAL: You are a JSON API. Your entire response must be a single valid JSON object starting with { and ending with }. Do NOT use markdown syntax. Do NOT wrap in code fences.`,
           prompt: `## Resume Data\n${resumeContext}\n\n## Job Description\n${jobDescription}\n\nReturn a JSON object with: overallScore (0-100), keywordMatches (string[]), missingKeywords (string[]), suggestions ([{section, current, suggested}]), atsScore (0-100), summary (string).`,
           providerOptions: getJsonProviderOptions(aiConfig),
+          abortSignal: withTimeoutSignal(STREAM_TOOL_TIMEOUT_MS, abortSignal),
+          timeout: STREAM_TOOL_TIMEOUT_MS,
         });
 
         const analysis = extractJson(result.text, jdAnalysisOutputSchema);
@@ -228,7 +249,7 @@ CRITICAL: You are a JSON API. Your entire response must be a single valid JSON o
         targetLanguage: z.enum(['zh', 'en']).describe('Target language: "zh" for Chinese, "en" for English'),
       }),
       execute: async ({ targetLanguage }) => {
-        const resume = await resumeRepository.findById(resumeId);
+        const resume = await resumeRepository.findByIdForUser(resumeId, userId);
         if (!resume) return { success: false, error: 'Resume not found' };
 
         const model = getModel(aiConfig);
@@ -265,6 +286,8 @@ Rules:
 - CRITICAL: Return a single valid JSON object with keys: sectionId, title, content. No markdown, no code fences.`,
             prompt: `Translate this resume section. Return JSON with keys: sectionId, title, content.\n\n${JSON.stringify(section)}`,
             providerOptions: getJsonProviderOptions(aiConfig),
+            abortSignal: withTimeoutSignal(STREAM_TOOL_TIMEOUT_MS, abortSignal),
+            timeout: STREAM_TOOL_TIMEOUT_MS,
           });
 
           return extractJson(result.text, singleSectionSchema);
