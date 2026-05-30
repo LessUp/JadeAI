@@ -20,11 +20,13 @@ function buildSwissSectionContent(section: Section, lang: string): string {
   if (section.type === 'summary') return `<div class="text-sm leading-relaxed" style="color:#3f3f46">${md((c as SummaryContent).text)}</div>`;
 
   if (section.type === 'work_experience') {
-    return `<div class="space-y-4">${((c as WorkExperienceContent).items || []).map((it: any) => `<div class="grid grid-cols-[140px_1fr] gap-4">
+    return `<div class="space-y-4">${((c as WorkExperienceContent).items || []).map((it: any) => `<div class="grid grid-cols-[140px_1fr] gap-4" data-pdf-entry>
       <div class="text-xs" style="color:#71717a"><span>${esc(it.startDate)} &ndash; ${esc(it.endDate) || (it.current ? (lang === 'zh' ? '至今' : 'Present') : '')}</span></div>
       <div>
-        <h3 class="text-sm font-bold" style="color:${TEXT}">${esc(it.position)}</h3>
-        ${it.company ? `<p class="text-sm" style="color:${RED}">${esc(it.company)}</p>` : ''}
+        <div data-pdf-entry-header>
+          <h3 class="text-sm font-bold" style="color:${TEXT}">${esc(it.position)}</h3>
+          ${it.company ? `<p class="text-sm" style="color:${RED}">${esc(it.company)}</p>` : ''}
+        </div>
         ${it.description ? `<div class="mt-1 text-sm" style="color:#3f3f46">${md(it.description)}</div>` : ''}
         ${it.technologies?.length ? `<p class="mt-0.5 text-xs" style="color:#71717a">${lang === 'zh' ? '技术栈' : 'Tech'}: ${esc(it.technologies.join(', '))}</p>` : ''}
         ${it.highlights?.length ? `<ul class="mt-1 list-none space-y-0.5">${it.highlights.filter(Boolean).map((h: string) => `<li class="flex items-start gap-2 text-sm" style="color:#3f3f46"><span class="mt-1.5 inline-block h-1 w-1 shrink-0" style="background-color:${RED}"></span>${md(h)}</li>`).join('')}</ul>` : ''}
@@ -51,10 +53,12 @@ function buildSwissSectionContent(section: Section, lang: string): string {
   }
 
   if (section.type === 'projects') {
-    return `<div class="space-y-3">${((c as ProjectsContent).items || []).map((it: any) => `<div class="grid grid-cols-[140px_1fr] gap-4">
+    return `<div class="space-y-3">${((c as ProjectsContent).items || []).map((it: any) => `<div class="grid grid-cols-[140px_1fr] gap-4" data-pdf-entry>
       ${it.startDate ? `<span class="text-xs" style="color:#71717a">${esc(it.startDate)} \u2013 ${it.endDate ? esc(it.endDate) : (lang === 'zh' ? '至今' : 'Present')}</span>` : '<span></span>'}
       <div>
-        <h3 class="text-sm font-bold" style="color:${TEXT}">${esc(it.name)}</h3>
+        <div data-pdf-entry-header>
+          <h3 class="text-sm font-bold" style="color:${TEXT}">${esc(it.name)}</h3>
+        </div>
         ${it.description ? `<div class="mt-0.5 text-sm" style="color:#3f3f46">${md(it.description)}</div>` : ''}
         ${it.technologies?.length ? `<p class="mt-0.5 text-xs" style="color:#71717a">${lang === 'zh' ? '技术栈' : 'Tech'}: ${esc(it.technologies.join(', '))}</p>` : ''}
         ${it.highlights?.length ? `<ul class="mt-1 list-none space-y-0.5">${it.highlights.filter(Boolean).map((h: string) => `<li class="flex items-start gap-2 text-sm" style="color:#3f3f46"><span class="mt-1.5 inline-block h-1 w-1 shrink-0" style="background-color:${RED}"></span>${md(h)}</li>`).join('')}</ul>` : ''}
@@ -122,7 +126,7 @@ export function buildSwissHtml(resume: ResumeWithSections): string {
       ${contacts.length ? `<div class="mt-4 flex flex-wrap gap-x-6 gap-y-1 border-t border-black pt-3 text-xs" style="color:${TEXT}">${contacts.map(c => `<span>${esc(c)}</span>`).join('')}</div>` : ''}
     </div>
     ${sections.map(s => `<div class="mb-6" data-section>
-      <div class="mb-3 flex items-center gap-2 border-b border-zinc-200 pb-2">
+      <div class="mb-3 flex items-center gap-2 border-b border-zinc-200 pb-2" data-section-heading="wide" style="margin-left:-10px;margin-right:-10px;padding-left:10px;padding-right:10px">
         <span class="inline-block h-2.5 w-2.5 shrink-0" style="background-color:${RED}"></span>
         <h2 class="text-xs font-bold uppercase tracking-[0.2em]" style="color:${TEXT}">${esc(s.title)}</h2>
       </div>

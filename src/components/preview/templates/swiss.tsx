@@ -61,7 +61,7 @@ export function SwissTemplate({ resume }: { resume: Resume }) {
         .map((section) => (
           <div key={section.id} className="mb-6" data-section>
             {/* Section header with red square */}
-            <div className="mb-3 flex items-center gap-2 border-b border-zinc-200 pb-2">
+            <div className="mb-3 -mx-2 flex items-center gap-2 border-b border-zinc-200 px-2 pb-2">
               <span className="inline-block h-2.5 w-2.5 shrink-0" style={{ backgroundColor: RED }} />
               <h2 className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: TEXT }}>{section.title}</h2>
             </div>

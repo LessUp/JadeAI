@@ -184,6 +184,9 @@ export async function generateHtml(
        [data-section] * { overflow: visible !important; }
        [data-section] [class*="space-y"] { break-inside: auto !important; }
        [data-section] [class*="space-y"] > div, .item { break-inside: avoid !important; }
+       [data-section] [class*="space-y"] > [data-pdf-entry] { break-inside: auto !important; }
+       [data-pdf-entry] [data-pdf-entry-header],
+       [data-section-heading] { break-inside: avoid !important; }
        h2, h3 { break-after: avoid !important; }
        p { orphans: 3; widows: 3; }
        ${layoutProfile.surfaceMode === 'sidebar-dark' && layoutProfile.sidebar ? `/* Sidebar dark: body gradient = sidebar colour every page.

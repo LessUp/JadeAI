@@ -97,6 +97,23 @@ test('pdf regression suite', async (t) => {
     }
   });
 
+  await t.test('swiss layout no longer defers the marker role to the next page', async () => {
+    const artifact = await renderPdfArtifact('swiss-page-gap');
+    assert.ok(artifact.pageCount >= 3);
+    assert.match(
+      artifact.pages[0] || '',
+      /全栈工程师/,
+      'expected the marker role to begin before the page break instead of leaving a large trailing gap',
+    );
+  });
+
+  await t.test('swiss export widens section headers for page-top fragments', async () => {
+    const resume = getPdfRegressionFixture('swiss-page-gap');
+    const html = await generateHtml(resume as any, true);
+    assert.match(html, /data-section-heading="wide"/);
+    assert.match(html, /margin-left:-10px;margin-right:-10px;padding-left:10px;padding-right:10px/);
+  });
+
   await t.test('two-column fixture keeps extractable semantic text', async () => {
     const artifact = await renderPdfArtifact('two-column-balanced');
     assert.ok(artifact.pageCount >= 1);

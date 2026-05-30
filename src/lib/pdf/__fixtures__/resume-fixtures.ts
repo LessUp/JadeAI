@@ -1,4 +1,4 @@
-import type { Resume, ResumeSection, ThemeConfig } from '@/types/resume';
+import type { Resume, ResumeSection, ThemeConfig, WorkExperienceContent } from '@/types/resume';
 import { DEFAULT_THEME } from '@/lib/resume-theme/build-theme-css';
 
 const NOW = new Date('2026-05-29T00:00:00.000Z');
@@ -212,6 +212,79 @@ function createResumeFixture({
   };
 }
 
+function createSwissPageGapFixture(): Resume {
+  const resume = createResumeFixture({
+    id: 'fixture-swiss-gap',
+    title: 'Swiss Page Gap Probe',
+    template: 'swiss',
+    fullName: 'Avery Swiss Probe',
+    summaryParagraphs: 4,
+    workCount: 3,
+    workHighlights: 6,
+    workDescriptionRepeat: 4,
+    skillCategories: 2,
+    skillsPerCategory: 4,
+    projectCount: 2,
+    certificationCount: 1,
+    projectAnchor: 'Swiss Header Width Marker',
+    theme: {
+      lineSpacing: 1.5,
+      sectionSpacing: 16,
+      margin: { top: 20, right: 20, bottom: 20, left: 20 },
+    },
+  });
+
+  const workSection = resume.sections.find((section) => section.type === 'work_experience');
+  const projectSection = resume.sections.find((section) => section.type === 'projects');
+  const summarySection = resume.sections.find((section) => section.type === 'summary');
+
+  if (summarySection && 'text' in summarySection.content) {
+    summarySection.content.text += ' 前置填充段落。'.repeat(20);
+  }
+
+  if (workSection && 'items' in workSection.content) {
+    const workContent = workSection.content as WorkExperienceContent;
+    const [firstItem, secondItem] = workContent.items;
+    if (firstItem) {
+      firstItem.position = '资深后端工程师';
+      firstItem.description = repeatParagraph(
+        'Led multimodal export orchestration for enterprise recruitment workflows.',
+        2,
+      );
+      firstItem.highlights = firstItem.highlights.slice(0, 2);
+    }
+    if (secondItem) {
+      secondItem.position = '全栈工程师';
+      secondItem.company = '即构科技/实时音视频事业部公司';
+      secondItem.startDate = '2021-03';
+      secondItem.endDate = '2022-03';
+      secondItem.description = Array.from({ length: 5 }, (_, index) =>
+        `负责千万级并发信令系统与实时音视频质量诊断平台建设，复现分页边界空白场景 ${index + 1}。`,
+      ).join(' ');
+      secondItem.highlights = Array.from({ length: 9 }, (_, index) =>
+        `分页边界复现锚点 ${index + 1}：保持条目头部、技术栈标签与长段落同时出现，观察是否被整块推到下一页。`,
+      );
+      secondItem.technologies = [
+        'Golang',
+        'ELK',
+        'ZooKeeper',
+        'Redis',
+        'Grafana',
+        'ClickHouse',
+        'MySQL',
+        'gRPC',
+        'Go Micro',
+      ];
+    }
+  }
+
+  if (projectSection) {
+    projectSection.title = '项目经历';
+  }
+
+  return resume;
+}
+
 export const PDF_REGRESSION_FIXTURES = {
   'modern-long-content': createResumeFixture({
     id: 'fixture-modern',
@@ -309,6 +382,7 @@ export const PDF_REGRESSION_FIXTURES = {
       lineSpacing: 1.55,
     },
   }),
+  'swiss-page-gap': createSwissPageGapFixture(),
 } as const satisfies Record<string, Resume>;
 
 export type PdfRegressionFixtureName = keyof typeof PDF_REGRESSION_FIXTURES;
