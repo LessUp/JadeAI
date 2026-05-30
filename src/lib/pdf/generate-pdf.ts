@@ -9,6 +9,9 @@ interface PdfOptions {
   fitOnePage?: boolean;
 }
 
+const SPARTICUZ_CHROMIUM_PACK_URL =
+  'https://github.com/Sparticuz/chromium/releases/download/v143.0.4/chromium-v143.0.4-pack.x64.tar';
+
 async function getBrowser() {
   // Docker / self-hosted: use system Chromium via CHROME_PATH
   if (process.env.CHROME_PATH) {
@@ -49,7 +52,12 @@ async function getBrowser() {
     }
   }
 
-  throw new Error('No Chrome/Chromium found. Install Google Chrome or set CHROME_PATH.');
+  const chromium = await import('@sparticuz/chromium-min');
+  return puppeteer.launch({
+    args: chromium.default.args,
+    executablePath: await chromium.default.executablePath(SPARTICUZ_CHROMIUM_PACK_URL),
+    headless: true,
+  });
 }
 
 // ─── Shrink state for iterative fitting ───────────────────────
