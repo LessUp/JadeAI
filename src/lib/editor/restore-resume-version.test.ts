@@ -1,12 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { ResumeDraftSnapshot } from '@/types/editor';
+import { DEFAULT_THEME } from '@/lib/resume-theme/build-theme-css';
 
 function makeDraft(title: string): ResumeDraftSnapshot {
   return {
     title,
     template: 'default',
-    themeConfig: {},
+    themeConfig: {
+      ...DEFAULT_THEME,
+      margin: {
+        ...DEFAULT_THEME.margin,
+      },
+    },
     language: 'en',
     sections: [],
   };
@@ -24,7 +30,7 @@ test('restores a different snapshot and persists it after verification', async (
     saveBackupVersion: async () => {
       calls.push('backup');
     },
-    applyTargetDraft: async (draft) => {
+    applyTargetDraft: async (draft: ResumeDraftSnapshot) => {
       calls.push('apply');
       currentDraft = draft;
     },
