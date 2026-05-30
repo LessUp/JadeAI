@@ -1,16 +1,18 @@
 import { NextRequest } from 'next/server';
-import { streamText, convertToModelMessages, stepCountIs } from 'ai';
+import { streamText, stepCountIs } from 'ai';
 import { getModel, extractAIConfig, AIConfigError } from '@/lib/ai/provider';
 import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { chatRepository } from '@/lib/db/repositories/chat.repository';
 import { getSystemPrompt } from '@/lib/ai/prompts';
 import { createExecutableTools } from '@/lib/ai/tools';
-
-const MAX_ROUNDS = 10;
-const MAX_MESSAGES = MAX_ROUNDS * 2; // 10 rounds = 20 messages (user + assistant)
+import { buildChatContextMessages } from '@/lib/ai/chat-context';
 type ToolCallLike = { toolName: string; input: unknown };
 type ToolResultLike = { output?: unknown };
+type OrderedPart =
+  | { type: 'step-start' }
+  | { type: 'text'; text: string }
+  | { type: 'tool'; toolName: string; args: unknown; result: unknown };
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,10 +57,7 @@ export async function POST(request: NextRequest) {
 
     const aiConfig = extractAIConfig(request);
     const model = getModel(aiConfig, modelId);
-    const modelMessages = await convertToModelMessages(messages);
-
-    // Truncate to last N rounds for LLM context
-    const truncatedMessages = modelMessages.slice(-MAX_MESSAGES);
+    const truncatedMessages = await buildChatContextMessages(messages);
 
     const tools = resumeId ? createExecutableTools(resumeId, aiConfig) : undefined;
 
@@ -72,14 +71,22 @@ export async function POST(request: NextRequest) {
         if (!sessionId) return;
 
         // Build ordered parts array preserving the interleaving of text and tool calls
-        const orderedParts: ({ type: 'text'; text: string } | { type: 'tool'; toolName: string; args: unknown; result: unknown })[] = [];
+        const orderedParts: OrderedPart[] = [];
 
         for (const step of steps) {
+          const tcs = step.toolCalls ?? [];
+          const trs = step.toolResults ?? [];
+
+          if (!step.text && tcs.length === 0) {
+            continue;
+          }
+
+          orderedParts.push({ type: 'step-start' });
+
           if (step.text) {
             orderedParts.push({ type: 'text', text: step.text });
           }
-          const tcs = step.toolCalls ?? [];
-          const trs = step.toolResults ?? [];
+
           for (let i = 0; i < tcs.length; i++) {
             const toolCall = tcs[i] as ToolCallLike | undefined;
             const toolResult = trs[i] as ToolResultLike | undefined;

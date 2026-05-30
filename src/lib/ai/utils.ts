@@ -8,6 +8,11 @@ interface DBMessage {
   createdAt: Date | number | null;
 }
 
+type OrderedPart =
+  | { type: 'step-start' }
+  | { type: 'text'; text: string }
+  | { type: 'tool'; toolName: string; args: unknown; result: unknown };
+
 export function dbMessagesToUIMessages(dbMessages: DBMessage[]): UIMessage[] {
   return dbMessages.map((msg) => {
     const parts: UIMessage['parts'] = [];
@@ -15,10 +20,12 @@ export function dbMessagesToUIMessages(dbMessages: DBMessage[]): UIMessage[] {
 
     if (msg.role === 'assistant' && metadata.orderedParts) {
       // New format: ordered parts preserving interleaving of text and tool calls
-      const orderedParts = metadata.orderedParts as ({ type: 'text'; text: string } | { type: 'tool'; toolName: string; args: unknown; result: unknown })[];
+      const orderedParts = metadata.orderedParts as OrderedPart[];
       let toolIndex = 0;
       for (const op of orderedParts) {
-        if (op.type === 'text') {
+        if (op.type === 'step-start') {
+          parts.push({ type: 'step-start' });
+        } else if (op.type === 'text') {
           parts.push({ type: 'text' as const, text: op.text });
         } else if (op.type === 'tool') {
           parts.push({
@@ -27,7 +34,7 @@ export function dbMessagesToUIMessages(dbMessages: DBMessage[]): UIMessage[] {
             state: 'output-available',
             input: op.args,
             output: op.result ?? { success: true },
-          } as any);
+          } as UIMessage['parts'][number]);
         }
       }
     } else if (msg.role === 'assistant' && metadata.toolCalls) {
@@ -44,7 +51,7 @@ export function dbMessagesToUIMessages(dbMessages: DBMessage[]): UIMessage[] {
           state: 'output-available',
           input: tc.args,
           output: tr?.result ?? { success: true },
-        } as any);
+        } as UIMessage['parts'][number]);
       }
 
       if (msg.content) {
