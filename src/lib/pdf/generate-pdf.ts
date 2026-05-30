@@ -4,8 +4,9 @@ import puppeteer from 'puppeteer-core';
 import {
   A4_HEIGHT_PX,
   A4_WIDTH_PX,
-  fitContentToOnePage,
-  preventNearlyBlankPage,
+  applyPaginationStrategy,
+  type PaginationContext,
+  type PaginationStrategyResult,
 } from './pagination-strategy';
 
 const SPARTICUZ_CHROMIUM_PACK_URL =
@@ -20,6 +21,8 @@ let hasWarnedAboutBundledChromiumFallback = false;
 
 interface PdfOptions {
   fitOnePage?: boolean;
+  paginationContext?: PaginationContext;
+  onPaginationResult?: (result: PaginationStrategyResult) => void;
 }
 
 async function launchBundledChromium() {
@@ -98,11 +101,11 @@ export async function generatePdf(html: string, options: PdfOptions = {}): Promi
         ),
     );
 
-    if (options.fitOnePage) {
-      await fitContentToOnePage(page);
-    } else {
-      await preventNearlyBlankPage(page);
-    }
+    await applyPaginationStrategy(page, {
+      mode: options.fitOnePage ? 'fit-one-page' : 'prevent-blank-page',
+      context: options.paginationContext,
+      onResult: options.onPaginationResult,
+    });
 
     const pdf = await page.pdf({
       format: 'A4',

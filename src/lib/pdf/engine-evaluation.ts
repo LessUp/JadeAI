@@ -6,6 +6,7 @@ import {
   type PdfRegressionFixtureName,
 } from './__fixtures__/resume-fixtures';
 import { generatePdf } from './generate-pdf';
+import type { PaginationStrategyResult } from './pagination-strategy';
 
 export interface PdfBenchmarkInput {
   fixtureName: PdfRegressionFixtureName;
@@ -16,7 +17,12 @@ export interface PdfEngineEvaluator {
   engine: string;
   availability: 'available' | 'optional' | 'external';
   notes: string;
-  renderPdf?: (html: string) => Promise<Buffer>;
+  renderPdf?: (html: string) => Promise<PdfRenderArtifact>;
+}
+
+export interface PdfRenderArtifact {
+  pdf: Buffer;
+  paginationResult?: PaginationStrategyResult;
 }
 
 async function loadOptionalModule(specifier: string): Promise<any> {
@@ -42,7 +48,7 @@ export async function preparePdfBenchmarkInputs(): Promise<PdfBenchmarkInput[]> 
   return inputs;
 }
 
-async function renderWithPlaywright(html: string): Promise<Buffer> {
+async function renderWithPlaywright(html: string): Promise<PdfRenderArtifact> {
   const playwright = await loadOptionalModule('playwright');
   const browser = await playwright.chromium.launch({ headless: true });
   try {
@@ -55,7 +61,7 @@ async function renderWithPlaywright(html: string): Promise<Buffer> {
       printBackground: true,
       margin: { top: '0', right: '0', bottom: '0', left: '0' },
     });
-    return Buffer.from(pdf);
+    return { pdf: Buffer.from(pdf) };
   } finally {
     await browser.close();
   }
@@ -67,7 +73,16 @@ export async function getPdfEngineEvaluators(): Promise<PdfEngineEvaluator[]> {
       engine: 'puppeteer',
       availability: 'available',
       notes: 'Current production renderer; baseline for page count and render time.',
-      renderPdf: (html) => generatePdf(html),
+      renderPdf: async (html) => {
+        let paginationResult: PaginationStrategyResult | undefined;
+        const pdf = await generatePdf(html, {
+          onPaginationResult: (result) => {
+            paginationResult = result;
+          },
+        });
+
+        return { pdf, paginationResult };
+      },
     },
   ];
 

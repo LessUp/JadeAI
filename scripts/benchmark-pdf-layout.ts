@@ -12,6 +12,10 @@ interface BenchmarkRow {
   pageCount?: number;
   textLength?: number;
   durationMs?: number;
+  paginationMode?: string;
+  paginationSuccess?: string;
+  paginationIterations?: number;
+  paginationScalePct?: number;
   notes?: string;
 }
 
@@ -47,9 +51,9 @@ async function main() {
 
     for (const input of inputs) {
       const start = performance.now();
-      const buffer = await evaluator.renderPdf(input.html);
+      const artifact = await evaluator.renderPdf(input.html);
       const durationMs = Number((performance.now() - start).toFixed(1));
-      const { pageCount, textLength } = await inspectPdf(buffer);
+      const { pageCount, textLength } = await inspectPdf(artifact.pdf);
 
       rows.push({
         engine: evaluator.engine,
@@ -58,6 +62,11 @@ async function main() {
         pageCount,
         textLength,
         durationMs,
+        paginationMode: artifact.paginationResult?.mode,
+        paginationSuccess:
+          artifact.paginationResult == null ? undefined : artifact.paginationResult.success ? 'yes' : 'no',
+        paginationIterations: artifact.paginationResult?.iterations,
+        paginationScalePct: artifact.paginationResult?.scalePct,
       });
     }
   }

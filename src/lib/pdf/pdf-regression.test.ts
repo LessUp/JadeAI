@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { generateHtml } from '@/app/api/resume/[id]/export/builders';
 import { generatePdf } from '@/lib/pdf/generate-pdf';
+import type { PaginationStrategyResult } from '@/lib/pdf/pagination-strategy';
 
 import {
   getPdfRegressionFixture,
@@ -63,6 +64,24 @@ test('pdf regression suite', async (t) => {
     );
     assert.equal(fitArtifact.pageCount, 1);
     assert.match(fitArtifact.text, /Modern Fit Marker Project/);
+  });
+
+  await t.test('fitOnePage emits pagination telemetry', async () => {
+    const resume = getPdfRegressionFixture('modern-long-content');
+    const html = await generateHtml(resume as any, true);
+    let paginationResult: PaginationStrategyResult | undefined;
+
+    await generatePdf(html, {
+      fitOnePage: true,
+      onPaginationResult: (result) => {
+        paginationResult = result;
+      },
+    });
+
+    assert.equal(paginationResult?.mode, 'fit-one-page');
+    assert.equal(paginationResult?.success, true);
+    assert.ok((paginationResult?.iterations ?? 0) > 0);
+    assert.ok((paginationResult?.usableHeight ?? 0) > 0);
   });
 
   await t.test('sidebar layout avoids a near-blank trailing page', async () => {

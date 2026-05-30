@@ -69,6 +69,7 @@ JadeAI 是一个面向简历编辑、AI 优化和求职准备的全栈应用。�
 - **JSON 导入**：可恢复现有简历或创建新简历
 - **分享链接**：支持密码保护与访问统计
 - **本地 PDF 渲染依赖**：优先使用系统 Chrome / Chromium；如未找到，会提示并回退到 bundled Chromium。可通过 `CHROME_PATH` 显式指定浏览器路径以避免运行时下载。
+- **PDF 分页引擎**：`fit-one-page` 与 `prevent-blank-page` 现在共用同一个分页策略入口，并可在 `node --import tsx scripts/benchmark-pdf-layout.ts` 中输出分页 telemetry，便于比较不同渲染引擎与压缩效果。
 
 ## 技术栈
 
