@@ -1,6 +1,5 @@
 'use client';
 
-import type { UIMessage } from 'ai';
 import { useTranslations } from 'next-intl';
 import { X, Sparkles, Plus, Trash2, Clock, MessageSquare } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -11,6 +10,7 @@ import { useEditorStore } from '@/stores/editor-store';
 import { useSettingsStore, getAIHeaders } from '@/stores/settings-store';
 import { useAIChat } from '@/hooks/use-ai-chat';
 import { useMessagePagination } from '@/hooks/use-message-pagination';
+import type { AIChatStatus, AIChatUIMessage } from '@/types/ai';
 import { AIMessage } from './ai-message';
 import { AIInput } from './ai-input';
 
@@ -41,6 +41,28 @@ function formatTime(date: Date | number | null) {
   return `${y}/${m}/${day} · ${h}:${min}`;
 }
 
+function getMessageMetadata(message?: AIChatUIMessage) {
+  return (message as AIChatUIMessage | undefined)?.metadata;
+}
+
+function isConnectionError(message: string) {
+  return /ETIMEDOUT|ECONNRESET|ECONNREFUSED|Cannot connect|Failed to fetch|fetch failed|network/i.test(message);
+}
+
+function getStatusTone(status?: AIChatStatus | 'disconnected') {
+  switch (status) {
+    case 'completed':
+      return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    case 'error':
+    case 'disconnected':
+      return 'border-red-200 bg-red-50 text-red-700';
+    case 'aborted':
+      return 'border-amber-200 bg-amber-50 text-amber-700';
+    default:
+      return 'border-zinc-200 bg-zinc-50 text-zinc-600';
+  }
+}
+
 /** Headless chat body — reusable in both side panel and floating bubble */
 export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
   const t = useTranslations('ai');
@@ -53,7 +75,7 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>();
-  const [initialMessages, setInitialMessages] = useState<UIMessage[]>();
+  const [initialMessages, setInitialMessages] = useState<AIChatUIMessage[]>();
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -64,6 +86,25 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
   const settingsBaseURL = useSettingsStore((s) => s.aiBaseURL);
   const settingsApiKey = useSettingsStore((s) => s.aiApiKey);
   const hydrated = useSettingsStore((s) => s._hydrated);
+
+  const {
+    messages: chatMessages,
+    input,
+    handleInputChange,
+    handleSubmit: originalHandleSubmit,
+    isLoading,
+    status,
+    error: chatError,
+    sendMessage,
+    stopStreaming,
+    lastTerminalStatus,
+    resetTerminalState,
+  } = useAIChat({
+    resumeId,
+    sessionId: activeSessionId,
+    initialMessages,
+    selectedModel,
+  });
 
   // Sync selectedModel when settings hydrate or user changes default model
   useEffect(() => {
@@ -127,6 +168,7 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
       const data = await res.json();
       const newSession = data.session;
       if (newSession) {
+        resetTerminalState();
         setSessions((prev) => [{ id: newSession.id, title: newSession.title, updatedAt: newSession.updatedAt }, ...prev]);
         setActiveSessionId(newSession.id);
         resetPagination();
@@ -138,15 +180,16 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
     } catch (err) {
       console.error('Failed to create session:', err);
     }
-  }, [resumeId, resetPagination]);
+  }, [resetPagination, resetTerminalState, resumeId]);
 
   const switchSession = useCallback(async (sessionId: string) => {
     if (sessionId === activeSessionId) return;
+    resetTerminalState();
     setActiveSessionId(sessionId);
     setHistoryOpen(false);
     const msgs = await loadInitial(sessionId);
     setInitialMessages(msgs);
-  }, [activeSessionId, loadInitial]);
+  }, [activeSessionId, loadInitial, resetTerminalState]);
 
   const deleteSession = useCallback(async (sessionId: string) => {
     const headers = getHeaders();
@@ -172,13 +215,6 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
       }
     }
   }, [activeSessionId, sessions, loadInitial, createNewSession]);
-
-  const { messages: chatMessages, input, handleInputChange, handleSubmit: originalHandleSubmit, isLoading, status, error: chatError, sendMessage } = useAIChat({
-    resumeId,
-    sessionId: activeSessionId,
-    initialMessages,
-    selectedModel,
-  });
 
   // Show toast when AI API call fails
   const lastErrorRef = useRef<Error | null>(null);
@@ -214,6 +250,73 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
     const olderOnly = historicalMessages.filter((m) => !chatIds.has(m.id));
     return [...olderOnly, ...chatMessages];
   }, [historicalMessages, chatMessages]);
+
+  const latestAssistantMessage = useMemo(
+    () => [...displayMessages].reverse().find((message) => message.role === 'assistant'),
+    [displayMessages]
+  );
+
+  const latestAssistantMetadata = useMemo(
+    () => getMessageMetadata(latestAssistantMessage),
+    [latestAssistantMessage]
+  );
+
+  const latestRunningToolName = useMemo(() => {
+    const assistantParts = latestAssistantMessage?.parts || [];
+    const lastRunningTool = [...assistantParts].reverse().find((part) =>
+      typeof part.type === 'string'
+      && part.type.startsWith('tool-')
+      && (part as { state?: string }).state !== 'output-available'
+      && (part as { state?: string }).state !== 'output-error'
+    ) as { type?: string } | undefined;
+
+    return lastRunningTool?.type?.slice('tool-'.length);
+  }, [latestAssistantMessage]);
+
+  const statusBanner = useMemo(() => {
+    if (status === 'submitted') {
+      return {
+        tone: getStatusTone('submitted'),
+        label: t('statusSubmitted'),
+      };
+    }
+
+    if (status === 'streaming') {
+      return {
+        tone: getStatusTone('streaming'),
+        label: latestRunningToolName
+          ? t('statusToolRunning', { tool: latestRunningToolName })
+          : t('statusStreaming'),
+      };
+    }
+
+    const errorMessage = chatError?.message || latestAssistantMetadata?.errorText;
+    if (errorMessage) {
+      const disconnected = isConnectionError(errorMessage);
+      return {
+        tone: getStatusTone(disconnected ? 'disconnected' : 'error'),
+        label: disconnected ? t('statusDisconnected') : t('statusFailed'),
+        detail: errorMessage,
+      };
+    }
+
+    const terminalStatus = lastTerminalStatus || latestAssistantMetadata?.status;
+    if (!terminalStatus) return null;
+
+    const labelMap: Record<AIChatStatus, string> = {
+      submitted: t('statusSubmitted'),
+      streaming: t('statusStreaming'),
+      completed: t('statusCompleted'),
+      error: t('statusFailed'),
+      aborted: t('statusAborted'),
+    };
+
+    return {
+      tone: getStatusTone(terminalStatus),
+      label: labelMap[terminalStatus],
+      detail: latestAssistantMetadata?.errorText,
+    };
+  }, [chatError, lastTerminalStatus, latestAssistantMetadata, latestRunningToolName, status, t]);
 
   // Wrap handleSubmit to update session title on first message
   const handleSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
@@ -346,19 +449,23 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
           {displayMessages.map((message) => (
             <AIMessage key={message.id} message={message} />
           ))}
-          {status === 'submitted' && (
-            <div className="flex items-center gap-2 text-xs text-zinc-400">
-              <span className="flex gap-1">
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand [animation-delay:0ms]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand [animation-delay:150ms]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-brand [animation-delay:300ms]" />
-              </span>
-              {t('thinking')}
-            </div>
-          )}
-          {chatError && status !== 'streaming' && status !== 'submitted' && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-600">
-              {t('errorMessage')}
+          {statusBanner && (
+            <div className={`rounded-xl border px-3 py-2 text-[12px] ${statusBanner.tone}`}>
+              <div className="flex items-center gap-2">
+                {(status === 'submitted' || status === 'streaming') && (
+                  <span className="flex gap-1">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current [animation-delay:0ms]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current [animation-delay:150ms]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current [animation-delay:300ms]" />
+                  </span>
+                )}
+                <span>{statusBanner.label}</span>
+              </div>
+              {statusBanner.detail && (
+                <div className="mt-1 truncate text-[11px] opacity-80">
+                  {statusBanner.detail}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -372,6 +479,7 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
         models={models}
         selectedModel={selectedModel}
         onModelChange={setSelectedModel}
+        onStop={stopStreaming}
       />
     </>
   );

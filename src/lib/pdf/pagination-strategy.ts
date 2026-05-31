@@ -14,6 +14,9 @@ export const A4_WIDTH_PX = 794;
 export const A4_HEIGHT_PX = 1123;
 
 const MAX_FIT_ITERATIONS = 20;
+const MULTI_PAGE_TARGET_SAFETY_PX = 48;
+const LIGHT_TRAILING_FRAGMENT_MAX_PX = 170;
+const AGGRESSIVE_TRAILING_FRAGMENT_MAX_PX = 230;
 
 export type PaginationMode = 'fit-one-page' | 'prevent-blank-page';
 export type PaginationResultReason =
@@ -61,6 +64,11 @@ export interface PaginationStrategyResult {
   initialHeight: number;
   finalHeight: number;
   usableHeight: number;
+  targetHeight: number;
+  estimatedPageCount: number;
+  targetPageCount: number;
+  trailingFragmentHeight: number;
+  trailingFragmentRatio: number;
   iterations: number;
   stage: number;
   sectionSpacingDelta: number;
@@ -72,7 +80,7 @@ export interface PaginationStrategyResult {
   cleanupApplied: boolean;
 }
 
-interface PaginationStrategyConfig {
+export interface PaginationStrategyConfig {
   styleId: string;
   maxIterations: number;
   scaleStepPct: number;
@@ -82,6 +90,15 @@ interface PaginationStrategyConfig {
   overflowGuard: number | null;
   allowZoom: boolean;
   disabledReason: PaginationResultReason | null;
+}
+
+export interface PaginationTargetPlan {
+  targetHeight: number;
+  estimatedPageCount: number;
+  targetPageCount: number;
+  trailingFragmentHeight: number;
+  trailingFragmentRatio: number;
+  skipReason: PaginationResultReason | null;
 }
 
 export interface ApplyPaginationStrategyOptions {
@@ -211,10 +228,95 @@ async function readPaginationContext(page: Page): Promise<PaginationContext> {
   });
 }
 
-function getUsableHeight(context: PaginationContext): number {
-  return context.needsPadding
+export function getUsableHeight(context: PaginationContext): number {
+  return context.profile.pageMode === 'standard' || context.needsPadding
     ? A4_HEIGHT_PX - context.marginTop - context.marginBottom
     : A4_HEIGHT_PX;
+}
+
+export function resolvePaginationTargetPlan(
+  mode: PaginationMode,
+  initialHeight: number,
+  usableHeight: number,
+  context: PaginationContext,
+  config: PaginationStrategyConfig,
+): PaginationTargetPlan {
+  const safeUsableHeight = Math.max(1, usableHeight);
+  const estimatedPageCount = Math.max(1, Math.ceil(initialHeight / safeUsableHeight));
+
+  if (mode === 'fit-one-page') {
+    return {
+      targetHeight: safeUsableHeight,
+      estimatedPageCount,
+      targetPageCount: 1,
+      trailingFragmentHeight:
+        estimatedPageCount === 1
+          ? initialHeight
+          : initialHeight - (estimatedPageCount - 1) * safeUsableHeight,
+      trailingFragmentRatio:
+        estimatedPageCount === 1
+          ? initialHeight / safeUsableHeight
+          : (initialHeight - (estimatedPageCount - 1) * safeUsableHeight) / safeUsableHeight,
+      skipReason: null,
+    };
+  }
+
+  if (initialHeight <= safeUsableHeight) {
+    return {
+      targetHeight: safeUsableHeight,
+      estimatedPageCount: 1,
+      targetPageCount: 1,
+      trailingFragmentHeight: initialHeight,
+      trailingFragmentRatio: initialHeight / safeUsableHeight,
+      skipReason: 'no-blank-risk',
+    };
+  }
+
+  const targetPageCount = estimatedPageCount - 1;
+  const previousPagesHeight = targetPageCount * safeUsableHeight;
+  const trailingFragmentHeight = Math.max(0, initialHeight - previousPagesHeight);
+  const trailingFragmentRatio = trailingFragmentHeight / safeUsableHeight;
+  const maxTrailingRatio = Math.max(0, (config.overflowGuard ?? 1.15) - 1);
+  const maxTrailingPx =
+    context.profile.blankPagePrevention === 'aggressive-fit'
+      ? AGGRESSIVE_TRAILING_FRAGMENT_MAX_PX
+      : LIGHT_TRAILING_FRAGMENT_MAX_PX;
+
+  if (trailingFragmentRatio > maxTrailingRatio && trailingFragmentHeight > maxTrailingPx) {
+    return {
+      targetHeight: previousPagesHeight,
+      estimatedPageCount,
+      targetPageCount,
+      trailingFragmentHeight,
+      trailingFragmentRatio,
+      skipReason: 'no-blank-risk',
+    };
+  }
+
+  const targetHeight =
+    targetPageCount > 1
+      ? Math.max(safeUsableHeight, previousPagesHeight - MULTI_PAGE_TARGET_SAFETY_PX)
+      : safeUsableHeight;
+
+  if (config.overflowGuard && initialHeight > targetHeight * config.overflowGuard) {
+    return {
+      targetHeight,
+      estimatedPageCount,
+      targetPageCount,
+      trailingFragmentHeight,
+      trailingFragmentRatio,
+      skipReason: 'overflow-too-large',
+    };
+  }
+
+  return {
+    targetHeight,
+    estimatedPageCount,
+    targetPageCount,
+    trailingFragmentHeight,
+    trailingFragmentRatio,
+    skipReason: null,
+  };
 }
 
 function getMaxMarginDelta(context: PaginationContext): number {
@@ -266,10 +368,10 @@ async function applySinglePageCleanup(page: Page): Promise<void> {
 async function applyFallbackZoom(
   page: Page,
   height: number,
-  usableHeight: number,
+  targetHeight: number,
   minScalePct: number,
 ): Promise<boolean> {
-  const zoom = Math.max(minScalePct / 100, usableHeight / Math.max(height, 1));
+  const zoom = Math.max(minScalePct / 100, targetHeight / Math.max(height, 1));
   if (zoom >= 1) {
     return true;
   }
@@ -284,7 +386,7 @@ async function applyFallbackZoom(
     `,
   );
   await waitForReflow(page);
-  return (await measureHeight(page)) <= usableHeight;
+  return (await measureHeight(page)) <= targetHeight;
 }
 
 export function resolvePaginationStrategyConfig(
@@ -340,6 +442,7 @@ function buildResult(
   initialHeight: number,
   finalHeight: number,
   usableHeight: number,
+  targetPlan: PaginationTargetPlan,
   iterations: number,
   stage: number,
   success: boolean,
@@ -356,6 +459,11 @@ function buildResult(
     initialHeight,
     finalHeight,
     usableHeight,
+    targetHeight: targetPlan.targetHeight,
+    estimatedPageCount: targetPlan.estimatedPageCount,
+    targetPageCount: targetPlan.targetPageCount,
+    trailingFragmentHeight: targetPlan.trailingFragmentHeight,
+    trailingFragmentRatio: targetPlan.trailingFragmentRatio,
     iterations,
     stage,
     sectionSpacingDelta: state.sectionSpacingDelta,
@@ -386,6 +494,13 @@ export async function applyPaginationStrategy(
   const config = resolvePaginationStrategyConfig(options.mode, context);
   const usableHeight = getUsableHeight(context);
   const initialHeight = await measureHeight(page);
+  const targetPlan = resolvePaginationTargetPlan(
+    options.mode,
+    initialHeight,
+    usableHeight,
+    context,
+    config,
+  );
   const state: ShrinkState = {
     sectionSpacingDelta: 0,
     lineSpacingDelta: 0,
@@ -403,6 +518,7 @@ export async function applyPaginationStrategy(
         initialHeight,
         initialHeight,
         usableHeight,
+        targetPlan,
         0,
         0,
         false,
@@ -414,7 +530,7 @@ export async function applyPaginationStrategy(
     );
   }
 
-  if (options.mode === 'fit-one-page' && initialHeight <= usableHeight) {
+  if (options.mode === 'fit-one-page' && initialHeight <= targetPlan.targetHeight) {
     await applySinglePageCleanup(page);
     return emitResult(
       options,
@@ -425,6 +541,7 @@ export async function applyPaginationStrategy(
         initialHeight,
         initialHeight,
         usableHeight,
+        targetPlan,
         0,
         0,
         true,
@@ -436,48 +553,26 @@ export async function applyPaginationStrategy(
     );
   }
 
-  if (options.mode === 'prevent-blank-page') {
-    if (initialHeight <= usableHeight) {
-      return emitResult(
-        options,
-        buildResult(
-          options.mode,
-          config,
-          state,
-          initialHeight,
-          initialHeight,
-          usableHeight,
-          0,
-          0,
-          false,
-          true,
-          'no-blank-risk',
-          false,
-          false,
-        ),
-      );
-    }
-
-    if (config.overflowGuard && initialHeight > usableHeight * config.overflowGuard) {
-      return emitResult(
-        options,
-        buildResult(
-          options.mode,
-          config,
-          state,
-          initialHeight,
-          initialHeight,
-          usableHeight,
-          0,
-          0,
-          false,
-          true,
-          'overflow-too-large',
-          false,
-          false,
-        ),
-      );
-    }
+  if (options.mode === 'prevent-blank-page' && targetPlan.skipReason) {
+    return emitResult(
+      options,
+      buildResult(
+        options.mode,
+        config,
+        state,
+        initialHeight,
+        initialHeight,
+        usableHeight,
+        targetPlan,
+        0,
+        0,
+        false,
+        true,
+        targetPlan.skipReason,
+        false,
+        false,
+      ),
+    );
   }
 
   const maxSectionDelta = Math.max(0, context.sectionSpacing - 4);
@@ -517,8 +612,11 @@ export async function applyPaginationStrategy(
     await waitForReflow(page);
 
     const height = await measureHeight(page);
-    if (height <= usableHeight) {
-      await applySinglePageCleanup(page);
+    if (height <= targetPlan.targetHeight) {
+      const shouldCleanup = targetPlan.targetPageCount === 1;
+      if (shouldCleanup) {
+        await applySinglePageCleanup(page);
+      }
       return emitResult(
         options,
         buildResult(
@@ -528,13 +626,14 @@ export async function applyPaginationStrategy(
           initialHeight,
           height,
           usableHeight,
+          targetPlan,
           iterations,
           stage,
           true,
           false,
           'fit',
           false,
-          true,
+          shouldCleanup,
         ),
       );
     }
@@ -549,7 +648,7 @@ export async function applyPaginationStrategy(
     const zoomSuccess = await applyFallbackZoom(
       page,
       finalHeight,
-      usableHeight,
+      targetPlan.targetHeight,
       config.minScalePct,
     );
     const zoomedHeight = await measureHeight(page);
@@ -564,6 +663,7 @@ export async function applyPaginationStrategy(
           initialHeight,
           zoomedHeight,
           usableHeight,
+          targetPlan,
           iterations,
           stage,
           true,
@@ -592,6 +692,7 @@ export async function applyPaginationStrategy(
       initialHeight,
       finalHeight,
       usableHeight,
+      targetPlan,
       iterations,
       stage,
       false,

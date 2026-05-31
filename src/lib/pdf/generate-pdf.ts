@@ -92,6 +92,7 @@ export async function generatePdf(html: string, options: PdfOptions = {}): Promi
     const page = await browser.newPage();
 
     await page.setViewport({ width: A4_WIDTH_PX, height: A4_HEIGHT_PX });
+    await page.emulateMediaType('print');
     await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 15000 });
     await page.evaluate(() => document.fonts.ready);
     await page.evaluate(
@@ -109,6 +110,7 @@ export async function generatePdf(html: string, options: PdfOptions = {}): Promi
 
     const pdf = await page.pdf({
       format: 'A4',
+      preferCSSPageSize: true,
       scale: 1,
       printBackground: true,
       margin: { top: '0', right: '0', bottom: '0', left: '0' },
