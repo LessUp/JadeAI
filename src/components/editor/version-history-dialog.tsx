@@ -16,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import type { ResumeVersionRecord, ResumeVersionSource } from '@/types/editor';
 import { listResumeVersions } from '@/lib/editor/resume-version-history';
-import { restoreResumeVersionById as restoreResumeVersion } from '@/lib/editor/resume-history-actions';
+import { restoreResumeVersion } from '@/lib/editor/resume-history-actions';
 
 interface VersionHistoryDialogProps {
   open: boolean;
@@ -79,7 +79,7 @@ export function VersionHistoryDialog({
   const handleRestore = useCallback(async (version: ResumeVersionRecord) => {
     setRestoringId(version.id);
     try {
-      const result = await restoreResumeVersion(version.id);
+      const result = await restoreResumeVersion(version);
       if (result.status === 'noop') {
         toast.info(t('restoreNoop'));
         return;

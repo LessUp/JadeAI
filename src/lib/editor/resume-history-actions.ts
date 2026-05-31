@@ -179,6 +179,13 @@ export async function restoreResumeVersionById(
     throw new Error(`Resume version not found: ${versionId}`);
   }
 
+  return await restoreResumeVersionRecord(version, dependencies);
+}
+
+export async function restoreResumeVersionRecord(
+  version: ResumeVersionRecord,
+  dependencies: RestoreResumeVersionDependencies = defaultRestoreResumeVersionDependencies
+) {
   return await dependencies.executeResumeRestore({
     readCurrentDraft: async () => {
       const currentResume = dependencies.getResumeStoreState().currentResume;
@@ -205,5 +212,5 @@ export async function restoreResumeVersionById(
 }
 
 export async function restoreResumeVersion(version: ResumeVersionRecord) {
-  return await restoreResumeVersionById(version.id);
+  return await restoreResumeVersionRecord(version);
 }
