@@ -2,6 +2,17 @@ import type { UIMessage } from 'ai';
 
 export type AIChatStatus = 'submitted' | 'streaming' | 'completed' | 'error' | 'aborted';
 
+export type AIChatErrorKind =
+  | 'output_limit'
+  | 'timeout_total'
+  | 'timeout_chunk'
+  | 'client_abort'
+  | 'network'
+  | 'provider'
+  | 'tool'
+  | 'stream'
+  | 'unknown';
+
 export type StoredToolState =
   | 'input-streaming'
   | 'input-available'
@@ -25,8 +36,16 @@ export interface AIChatMessageMetadata {
   status?: AIChatStatus;
   startedAt?: number;
   endedAt?: number;
+  requestId?: string;
   finishReason?: string;
   errorText?: string;
+  errorKind?: AIChatErrorKind;
+  elapsedMs?: number;
+  firstChunkAt?: number;
+  lastChunkAt?: number;
+  chunkCount?: number;
+  outputLength?: number;
+  retryable?: boolean;
   toolCalls?: AIToolCall[];
   toolResults?: Array<{ tool?: string; toolName?: string; result?: unknown }>;
 }

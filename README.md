@@ -108,6 +108,16 @@ pnpm docker:build
 
 镜像现在基于 Debian slim 构建，而不是 Alpine，这样安装 Chromium 与 CJK 字体时不会再依赖 `apk`，能规避部分代理环境下的 TLS / 超时问题。
 
+如果你在中国大陆构建时遇到 `apt-get install chromium fonts-noto-cjk` 下载中断、`unexpected EOF` 或 `Connection failed`，可以临时指定 Debian 镜像源：
+
+```bash
+DEBIAN_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian \
+DEBIAN_SECURITY_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian-security \
+pnpm docker:build
+```
+
+`docker:run` 与 `docker:publish` 也支持同样的 `DEBIAN_MIRROR` / `DEBIAN_SECURITY_MIRROR` 环境变量；Dockerfile 同时内置了 apt 下载重试与超时设置。
+
 如果你想改为宿主机目录持久化数据库：
 
 ```bash

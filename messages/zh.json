@@ -270,12 +270,21 @@
     "goToSettings": "前往设置",
     "stop": "停止",
     "statusSubmitted": "请求已发送，正在等待模型响应...",
+    "statusWaitingFirstToken": "正在等待模型开始输出...",
+    "statusWaitingSeconds": "已等待 {seconds} 秒",
     "statusStreaming": "正在生成回复...",
+    "statusWaitingForMoreTokens": "模型暂时没有新输出，继续等待中...",
+    "statusLastActivity": "上次收到内容：{seconds} 秒前",
     "statusToolRunning": "正在执行工具：{tool}",
     "statusCompleted": "已完成",
     "statusFailed": "执行失败",
     "statusAborted": "已停止",
-    "statusDisconnected": "连接已中断"
+    "statusDisconnected": "连接已中断",
+    "statusTimedOut": "AI 输出超时",
+    "statusOutputLimit": "已达到模型输出长度上限",
+    "statusProviderError": "AI 服务返回异常",
+    "statusToolError": "工具执行失败",
+    "statusStaleStream": "这条回复没有结束记录，可能是服务重启、网络断开或浏览器关闭导致。"
   },
   "pdf": {
     "exporting": "正在生成 PDF...",

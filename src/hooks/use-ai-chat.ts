@@ -18,6 +18,13 @@ interface UseAIChatOptions {
   selectedModel?: string;
 }
 
+export interface AIStreamActivity {
+  startedAt?: number;
+  firstTokenAt?: number;
+  lastTokenAt?: number;
+  hasReceivedToken?: boolean;
+}
+
 function isCompletedToolPart(part: unknown): boolean {
   if (!part || typeof part !== 'object') return false;
 
@@ -27,11 +34,27 @@ function isCompletedToolPart(part: unknown): boolean {
     && candidate.state === 'output-available';
 }
 
+function getMessageText(message?: AIChatUIMessage) {
+  if (!message?.parts) return '';
+  return message.parts
+    .filter((part): part is { type: 'text'; text: string } =>
+      part.type === 'text' && 'text' in part && typeof part.text === 'string'
+    )
+    .map((part) => part.text)
+    .join('');
+}
+
+function getLatestAssistantText(messages: AIChatUIMessage[]) {
+  const latestAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant');
+  return getMessageText(latestAssistantMessage);
+}
+
 export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel }: UseAIChatOptions) {
   const [input, setInput] = useState('');
   const [localMessages, setLocalMessages] = useState<AIChatUIMessage[]>([]);
   const [lastTerminalStatus, setLastTerminalStatus] = useState<AIChatStatus | undefined>();
   const [terminalSessionId, setTerminalSessionId] = useState<string | undefined>();
+  const [streamStartedAt, setStreamStartedAt] = useState<number | undefined>();
 
   const transport = useMemo(
     () =>
@@ -60,6 +83,22 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
 
   // Track completed tool call count to detect new tool results
   const completedToolCountRef = useRef(0);
+
+  const startStreamActivity = useCallback(() => {
+    setStreamStartedAt(Date.now());
+  }, []);
+
+  const resetStreamActivity = useCallback(() => {
+    setStreamStartedAt(undefined);
+  }, []);
+
+  const sendChatMessage = useCallback(
+    (...args: Parameters<typeof sendMessage>) => {
+      startStreamActivity();
+      return sendMessage(...args);
+    },
+    [sendMessage, startStreamActivity]
+  );
 
   const reloadResume = useCallback(async () => {
     if (!resumeId) return;
@@ -150,9 +189,11 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
     clearError();
     setTerminalSessionId(sessionId);
     setLastTerminalStatus(undefined);
-    sendMessage({ text: input });
+    sendChatMessage({ text: input });
     setInput('');
-  }, [clearError, input, localMessages, sendMessage, sessionId]);
+  }, [clearError, input, localMessages, sendChatMessage, sessionId]);
+
+  const latestAssistantText = getLatestAssistantText(messages);
 
   // Merge real chat messages with local-only display messages
   const allMessages = useMemo(
@@ -165,18 +206,21 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
     setLocalMessages([]);
     setTerminalSessionId(undefined);
     setLastTerminalStatus(undefined);
-  }, [setMessages]);
+    resetStreamActivity();
+  }, [resetStreamActivity, setMessages]);
 
   const stopStreaming = useCallback(() => {
     setTerminalSessionId(sessionId);
     setLastTerminalStatus('aborted');
+    resetStreamActivity();
     stop();
-  }, [sessionId, stop]);
+  }, [resetStreamActivity, sessionId, stop]);
 
   const resetTerminalState = useCallback(() => {
     setTerminalSessionId(undefined);
     setLastTerminalStatus(undefined);
-  }, []);
+    resetStreamActivity();
+  }, [resetStreamActivity]);
 
   return {
     messages: allMessages,
@@ -186,9 +230,10 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
     isLoading,
     status,
     error,
+    streamActivity: { startedAt: streamStartedAt, hasReceivedToken: latestAssistantText.length > 0 },
     lastTerminalStatus: terminalStatus,
     clearMessages,
-    sendMessage,
+    sendMessage: sendChatMessage,
     stopStreaming,
     resetTerminalState,
   };

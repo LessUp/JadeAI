@@ -270,12 +270,21 @@
     "goToSettings": "Go to Settings",
     "stop": "Stop",
     "statusSubmitted": "Request sent. Waiting for the model...",
+    "statusWaitingFirstToken": "Waiting for the model to start responding...",
+    "statusWaitingSeconds": "Waited {seconds}s",
     "statusStreaming": "Generating response...",
+    "statusWaitingForMoreTokens": "No new output yet. Still waiting...",
+    "statusLastActivity": "Last output {seconds}s ago",
     "statusToolRunning": "Running tool: {tool}",
     "statusCompleted": "Completed",
     "statusFailed": "Failed",
     "statusAborted": "Stopped",
-    "statusDisconnected": "Connection interrupted"
+    "statusDisconnected": "Connection interrupted",
+    "statusTimedOut": "AI output timed out",
+    "statusOutputLimit": "Reached the model output limit",
+    "statusProviderError": "AI provider returned an error",
+    "statusToolError": "Tool execution failed",
+    "statusStaleStream": "This reply has no completion record. The service may have restarted, the network may have disconnected, or the browser may have closed."
   },
   "pdf": {
     "exporting": "Generating PDF...",
