@@ -174,7 +174,8 @@ export async function generateHtml(
 
   const pdfOverrides = forPdf
     ? `/* Page margins and fragmentation */
-       @page { margin: ${layoutProfile.pageMode === 'edge-to-edge' ? '0' : `${pageMarginTop}mm 0 ${pageMarginBottom}mm 0`}; }
+       @page {        size: A4;
+       margin: ${layoutProfile.pageMode === 'edge-to-edge' ? '0' : `${pageMarginTop}mm 0 ${pageMarginBottom}mm 0`}; }
        html, body { background: ${bodyBg} !important; padding: 0 !important; margin: 0 !important; display: block !important; min-height: 100%; }
        .resume-export { width: 100%; }
        .resume-export > div { box-shadow: none !important; overflow: visible !important; ${layoutProfile.outerCloneMode === 'clone' ? '-webkit-box-decoration-break: clone; box-decoration-break: clone;' : layoutProfile.outerCloneMode === 'slice' ? '-webkit-box-decoration-break: slice; box-decoration-break: slice;' : 'padding-top: 0 !important; padding-bottom: 0 !important;'} ${layoutProfile.surfaceMode === 'sidebar-dark' ? 'min-height: auto !important; max-width: none !important; width: 100% !important; background: transparent !important;' : layoutProfile.pageMode === 'edge-to-edge' ? 'max-width: none !important; width: 100% !important;' : 'background: white !important;'} }

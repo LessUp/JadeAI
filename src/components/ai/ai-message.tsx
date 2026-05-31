@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { UIMessage } from 'ai';
 import { useUIStore } from '@/stores/ui-store';
+import type { AIChatStatus, AIChatUIMessage } from '@/types/ai';
 
 interface AIMessageProps {
   message: UIMessage;
@@ -63,7 +64,15 @@ function CollapsibleBlock({
   );
 }
 
-function ToolCallCard({ part }: { part: any }) {
+function ToolCallCard({
+  part,
+  messageStatus,
+  messageErrorText,
+}: {
+  part: any;
+  messageStatus?: AIChatStatus;
+  messageErrorText?: string;
+}) {
   const t = useTranslations('ai');
 
   const toolName = getToolName(part);
@@ -73,7 +82,8 @@ function ToolCallCard({ part }: { part: any }) {
 
   const isCompleted = state === 'output-available';
   const isError = state === 'output-error';
-  const isRunning = !isCompleted && !isError;
+  const isInterrupted = !isCompleted && !isError && (messageStatus === 'error' || messageStatus === 'aborted');
+  const isRunning = !isCompleted && !isError && !isInterrupted;
   const isSuccess = isCompleted && result?.success !== false;
 
   const argsStr = JSON.stringify(args, null, 2);
@@ -95,7 +105,7 @@ function ToolCallCard({ part }: { part: any }) {
       />
 
       {/* Result block */}
-      {(isCompleted || isError) && (
+      {(isCompleted || isError || isInterrupted) && (
         <CollapsibleBlock
           label={t('toolResult')}
           icon={<Play className="h-3 w-3 shrink-0" />}
@@ -106,11 +116,34 @@ function ToolCallCard({ part }: { part: any }) {
               <XCircle className="h-3 w-3 text-red-500" />
             )
           }
-          content={isError ? (part.errorText || t('toolCallError')) : resultStr}
+          content={
+            isError
+              ? (part.errorText || t('toolCallError'))
+              : isInterrupted
+                ? (messageErrorText || (messageStatus === 'aborted' ? t('statusAborted') : t('toolCallError')))
+                : resultStr
+          }
         />
       )}
     </div>
   );
+}
+
+function getAssistantStatusLabel(status: AIChatStatus, t: (key: string) => string) {
+  switch (status) {
+    case 'submitted':
+      return t('statusSubmitted');
+    case 'streaming':
+      return t('statusStreaming');
+    case 'completed':
+      return t('statusCompleted');
+    case 'error':
+      return t('statusFailed');
+    case 'aborted':
+      return t('statusAborted');
+    default:
+      return status;
+  }
 }
 
 function APIKeyMissingCard() {
@@ -143,6 +176,12 @@ function APIKeyMissingCard() {
 
 export function AIMessage({ message }: AIMessageProps) {
   const isUser = message.role === 'user';
+  const t = useTranslations('ai');
+  const metadata = !isUser ? (message as AIChatUIMessage).metadata : undefined;
+  const hasRenderableAssistantParts = !isUser && (message.parts || []).some((part) =>
+    (part.type === 'text' && Boolean((part as { text?: string }).text))
+    || isToolPart(part)
+  );
 
   const userText = isUser
     ? (message.parts || [])
@@ -188,10 +227,25 @@ export function AIMessage({ message }: AIMessageProps) {
               );
             }
             if (isToolPart(part)) {
-              return <ToolCallCard key={(part as any).toolCallId || i} part={part} />;
+              return (
+                <ToolCallCard
+                  key={(part as any).toolCallId || i}
+                  part={part}
+                  messageStatus={metadata?.status}
+                  messageErrorText={metadata?.errorText}
+                />
+              );
             }
             return null;
           })
+        )}
+        {!isUser && !hasRenderableAssistantParts && metadata?.status && (
+          <div className="space-y-1 text-[12px] text-zinc-500">
+            <div>{getAssistantStatusLabel(metadata.status, t)}</div>
+            {metadata.errorText && (
+              <div className="text-[11px] text-zinc-400">{metadata.errorText}</div>
+            )}
+          </div>
         )}
       </div>
     </div>

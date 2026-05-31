@@ -33,7 +33,11 @@ import {
 } from '@/components/ui/popover';
 import { useResumeStore } from '@/stores/resume-store';
 import { TEMPLATES } from '@/lib/constants';
-import { CODE_NEW_ROMAN_RESOURCE_HAN_STACK, FONT_STACK_OPTIONS } from '@/lib/font-stacks';
+import {
+  CHINESE_RESUME_FONT_STACK,
+  CODE_NEW_ROMAN_RESOURCE_HAN_STACK,
+  FONT_STACK_OPTIONS,
+} from '@/lib/font-stacks';
 import { templateLabelsMap } from '@/lib/template-labels';
 import { TemplateThumbnail } from '@/components/dashboard/template-thumbnail';
 import { cn } from '@/lib/utils';
@@ -128,15 +132,29 @@ const PRESET_THEMES: PresetTheme[] = [
     },
   },
   {
+    id: 'chineseResume',
+    colors: ['#12304A', '#2F6F73', '#F8FBFA', '#334155'],
+    config: {
+      primaryColor: '#12304A',
+      accentColor: '#2F6F73',
+      fontFamily: CHINESE_RESUME_FONT_STACK,
+      fontSize: 'medium',
+      lineSpacing: 1.42,
+      margin: { top: 16, right: 16, bottom: 16, left: 16 },
+      sectionSpacing: 10,
+      avatarStyle: 'oneInch',
+    },
+  },
+  {
     id: 'mint',
-      colors: ['#0A1F44', '#00C897', '#F5FBFA', '#334155'],
-      config: {
-        primaryColor: '#0A1F44',
-        accentColor: '#00C897',
-        fontFamily: CODE_NEW_ROMAN_RESOURCE_HAN_STACK,
-        fontSize: 'medium',
-        lineSpacing: 1.55,
-        margin: { top: 22, right: 22, bottom: 22, left: 22 },
+    colors: ['#0A1F44', '#00C897', '#F5FBFA', '#334155'],
+    config: {
+      primaryColor: '#0A1F44',
+      accentColor: '#00C897',
+      fontFamily: CODE_NEW_ROMAN_RESOURCE_HAN_STACK,
+      fontSize: 'medium',
+      lineSpacing: 1.55,
+      margin: { top: 22, right: 22, bottom: 22, left: 22 },
       sectionSpacing: 15,
     },
   },

@@ -14,6 +14,8 @@ const GENERIC_FAMILIES = new Set([
 
 export const CODE_NEW_ROMAN_RESOURCE_HAN_STACK =
   '"CodeNewRoman Nerd Font Mono", "Resource Han Rounded CN", "Noto Sans SC", monospace, sans-serif';
+export const CHINESE_RESUME_FONT_STACK =
+  '"Resource Han Rounded CN", "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif';
 
 export const DEFAULT_FONT_STACK = 'Inter';
 
@@ -30,6 +32,10 @@ export const FONT_STACK_OPTIONS = [
   {
     label: 'CodeNewRoman + Resource Han Rounded CN',
     value: CODE_NEW_ROMAN_RESOURCE_HAN_STACK,
+  },
+  {
+    label: 'Resource Han Rounded CN + Noto Sans SC',
+    value: CHINESE_RESUME_FONT_STACK,
   },
 ] as const;
 

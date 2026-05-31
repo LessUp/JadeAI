@@ -267,7 +267,15 @@
     "apiKeyMissing": "API Key Not Configured",
     "apiKeyMissingHint": "Please configure your AI API Key in Settings before using AI features.",
     "apiKeyMissingBubble": "API Key not configured. Go to Settings.",
-    "goToSettings": "Go to Settings"
+    "goToSettings": "Go to Settings",
+    "stop": "Stop",
+    "statusSubmitted": "Request sent. Waiting for the model...",
+    "statusStreaming": "Generating response...",
+    "statusToolRunning": "Running tool: {tool}",
+    "statusCompleted": "Completed",
+    "statusFailed": "Failed",
+    "statusAborted": "Stopped",
+    "statusDisconnected": "Connection interrupted"
   },
   "pdf": {
     "exporting": "Generating PDF...",
@@ -331,6 +339,7 @@
       "elegant": "Elegant",
       "bold": "Bold",
       "creative": "Creative",
+      "chineseResume": "Chinese Resume",
       "mint": "Mint"
     },
     "avatarStyle": "Avatar Shape",

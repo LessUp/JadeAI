@@ -19,10 +19,12 @@ export async function GET(
     const limitParam = request.nextUrl.searchParams.get('limit');
     const limit = limitParam ? Math.min(parseInt(limitParam, 10) || 20, 50) : 20;
 
-    const session = await chatRepository.findSession(sessionId);
+    const session = await chatRepository.findSessionForUser(sessionId, user.id);
     if (!session) return new Response('Not found', { status: 404 });
 
-    const { messages, hasMore, nextCursor } = await chatRepository.findPaginatedMessages(sessionId, { cursor, limit });
+    const paginated = await chatRepository.findPaginatedMessagesForUser(sessionId, user.id, { cursor, limit });
+    if (!paginated) return new Response('Not found', { status: 404 });
+    const { messages, hasMore, nextCursor } = paginated;
 
     return NextResponse.json({ session, messages, hasMore, nextCursor });
   } catch (error) {
@@ -41,7 +43,8 @@ export async function DELETE(
     if (!user) return new Response('Unauthorized', { status: 401 });
 
     const { sessionId } = await params;
-    await chatRepository.deleteSession(sessionId);
+    const deleted = await chatRepository.deleteSessionForUser(sessionId, user.id);
+    if (!deleted) return new Response('Not found', { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE /api/ai/chat/sessions/[id] error:', error);

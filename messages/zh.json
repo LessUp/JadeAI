@@ -267,7 +267,15 @@
     "apiKeyMissing": "API Key 未配置",
     "apiKeyMissingHint": "请先在设置中配置 AI 服务的 API Key，才能使用 AI 功能。",
     "apiKeyMissingBubble": "API Key 未配置，请前往设置配置",
-    "goToSettings": "前往设置"
+    "goToSettings": "前往设置",
+    "stop": "停止",
+    "statusSubmitted": "请求已发送，正在等待模型响应...",
+    "statusStreaming": "正在生成回复...",
+    "statusToolRunning": "正在执行工具：{tool}",
+    "statusCompleted": "已完成",
+    "statusFailed": "执行失败",
+    "statusAborted": "已停止",
+    "statusDisconnected": "连接已中断"
   },
   "pdf": {
     "exporting": "正在生成 PDF...",
@@ -331,6 +339,7 @@
       "elegant": "优雅",
       "bold": "大胆",
       "creative": "创意",
+      "chineseResume": "中文简历",
       "mint": "薄荷"
     },
     "avatarStyle": "头像样式",

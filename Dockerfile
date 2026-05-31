@@ -1,16 +1,17 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:22-alpine AS base
+FROM node:22-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
     NEXT_TELEMETRY_DISABLED=1
-RUN apk add --no-cache libc6-compat \
-    && corepack enable
+RUN corepack enable
 
 # --- Dependencies ---
 FROM base AS deps
 WORKDIR /app
-RUN apk add --no-cache python3 make g++
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm fetch --frozen-lockfile
@@ -33,7 +34,7 @@ WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
-    CHROME_PATH=/usr/bin/chromium-browser \
+    CHROME_PATH=/usr/bin/chromium \
     SQLITE_PATH=/app/data/jade.db \
     APP_VERSION=${APP_VERSION}
 LABEL org.opencontainers.image.title="JadeAI" \
@@ -45,9 +46,10 @@ LABEL org.opencontainers.image.title="JadeAI" \
       org.opencontainers.image.url="https://github.com/LessUp/JadeAI" \
       org.opencontainers.image.licenses="Apache-2.0"
 
-# Install Chromium, dependencies, and CJK fonts for PDF export
-RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont \
-    font-noto-cjk
+# Install Chromium and fonts for PDF export
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends chromium ca-certificates fonts-freefont-ttf fonts-noto-cjk wget \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy build output and necessary files
 COPY --from=builder --chown=node:node /app/public ./public
