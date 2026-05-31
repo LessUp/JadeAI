@@ -232,6 +232,9 @@
       "qrUrlInvalid": "Please enter a valid URL",
       "addItem": "Add Item",
       "removeItem": "Remove Item",
+      "summaryBlock": "Text block #{index}",
+      "addTextBlock": "Add Text Block",
+      "removeTextBlock": "Remove Text Block",
       "clear": "Clear",
       "dateDisplay": "{month} {year}",
       "months": {

@@ -232,6 +232,9 @@
       "qrUrlInvalid": "请输入有效的链接地址",
       "addItem": "添加条目",
       "removeItem": "删除条目",
+      "summaryBlock": "文本块 #{index}",
+      "addTextBlock": "添加文本块",
+      "removeTextBlock": "删除文本块",
       "clear": "清除",
       "dateDisplay": "{year}年{month}",
       "months": {

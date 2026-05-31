@@ -41,7 +41,7 @@ export function isSectionEmpty(section: ResumeSection): boolean {
   const content = section.content as any;
 
   if (section.type === 'summary') {
-    return !(content as SummaryContent).text;
+    return !String((content as SummaryContent).text ?? '').trim();
   }
 
   if (section.type === 'skills') {
