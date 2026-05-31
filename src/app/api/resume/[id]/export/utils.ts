@@ -175,7 +175,7 @@ export function buildQrCodesHtml(section: Section): string {
 
 // ─── Theme CSS for HTML export ────────────────────────────────
 
-export { DEFAULT_THEME } from '@/lib/resume-theme/build-theme-css';
+export { DEFAULT_THEME } from '@/lib/resume-theme/default-theme';
 
 export function buildExportThemeCSS(theme: ThemeConfig, template: string): string {
   return buildThemeCss({

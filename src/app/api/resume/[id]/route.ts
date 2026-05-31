@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
 import type { ResumeSection } from '@/types/resume';
+import { mergeThemeConfig } from '@/lib/resume-theme/build-theme-css';
 
 type IncomingSection = Pick<ResumeSection, 'id' | 'type' | 'title' | 'sortOrder' | 'visible' | 'content'>;
 
@@ -62,7 +63,7 @@ export async function PUT(
       await resumeRepository.update(id, {
         ...(title && { title }),
         ...(template && { template }),
-        ...(themeConfig && { themeConfig }),
+        ...(themeConfig && { themeConfig: mergeThemeConfig(themeConfig) }),
         ...(language && { language }),
       });
     }

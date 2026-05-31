@@ -136,7 +136,7 @@
     },
     "versionHistory": {
       "title": "Version History",
-      "description": "Restore a locally saved version of this resume.",
+      "description": "Restore a version saved in this browser; these versions do not sync across devices.",
       "loading": "Loading version history...",
       "empty": "No local versions yet. Versions appear after loading and saving this resume.",
       "latest": "Latest local version",

@@ -12,6 +12,7 @@ import type {
   ImprovementItem,
   InterviewMessageMetadata,
 } from '@/types/interview';
+import { mergeInterviewMessageMetadata } from '@/lib/interview/message-metadata';
 
 export const interviewRepository = {
   // ── Sessions ────────────────────────────────────────────────────────────────
@@ -124,6 +125,11 @@ export const interviewRepository = {
     return db.select().from(interviewMessages).where(eq(interviewMessages.roundId, roundId)).orderBy(interviewMessages.createdAt);
   },
 
+  async findMessage(messageId: string) {
+    const rows = await db.select().from(interviewMessages).where(eq(interviewMessages.id, messageId)).limit(1);
+    return rows[0] ?? null;
+  },
+
   async findAllMessagesBySessionId(sessionId: string) {
     const rounds = await db.select().from(interviewRounds).where(eq(interviewRounds.sessionId, sessionId)).orderBy(interviewRounds.sortOrder);
     if (rounds.length === 0) return [];
@@ -137,7 +143,15 @@ export const interviewRepository = {
   },
 
   async updateMessageMetadata(messageId: string, metadata: InterviewMessageMetadata) {
-    await db.update(interviewMessages).set({ metadata: metadata as any }).where(eq(interviewMessages.id, messageId));
+    const message = await this.findMessage(messageId);
+    if (!message) return null;
+
+    const nextMetadata = mergeInterviewMessageMetadata(
+      message.metadata as InterviewMessageMetadata | null | undefined,
+      metadata,
+    );
+    await db.update(interviewMessages).set({ metadata: nextMetadata as any }).where(eq(interviewMessages.id, messageId));
+    return nextMetadata;
   },
 
   // ── Reports ──────────────────────────────────────────────────────────────────

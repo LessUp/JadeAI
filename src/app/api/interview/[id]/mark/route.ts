@@ -16,6 +16,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   const { messageId, marked } = await request.json();
+  if (typeof messageId !== 'string' || typeof marked !== 'boolean') {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
+
+  const message = await interviewRepository.findMessage(messageId);
+  if (!message) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  const round = await interviewRepository.findRound(message.roundId);
+  if (!round || round.sessionId !== sessionId) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   await interviewRepository.updateMessageMetadata(messageId, { marked });
 
   return NextResponse.json({ success: true });

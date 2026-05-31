@@ -1,5 +1,5 @@
 import type { Resume, ResumeSection, ThemeConfig, WorkExperienceContent } from '@/types/resume';
-import { DEFAULT_THEME } from '@/lib/resume-theme/build-theme-css';
+import { DEFAULT_THEME } from '@/lib/resume-theme/default-theme';
 
 const NOW = new Date('2026-05-29T00:00:00.000Z');
 

@@ -68,6 +68,7 @@ JadeAI is a full-stack application for resume editing, AI-assisted writing, and 
 - **Multi-format export**: PDF, one-page PDF, DOCX, HTML, TXT, JSON
 - **JSON import** to restore or create resumes
 - **Share links** with optional password protection and view counts
+- **Local PDF rendering dependency**: prefers a system Chrome / Chromium. In production, set `CHROME_PATH` to an installed browser; if you really need the bundled Chromium runtime download fallback, explicitly set `ALLOW_CHROMIUM_DOWNLOAD=true`.
 
 ## Tech stack
 
@@ -140,6 +141,7 @@ Recommended release flow:
 pnpm version patch --no-git-tag-version
 # then add changelog/YYYY-MM-DD-vX.Y.Z-release.md
 
+pnpm release:check
 docker login
 IMAGE_REPOSITORY=shuai0/jadeai pnpm docker:publish
 ```

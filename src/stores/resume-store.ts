@@ -1,10 +1,12 @@
 import { create } from 'zustand';
+import { toast } from 'sonner';
 import type { Resume, ResumeSection, SectionContent } from '@/types/resume';
 import type { ResumeVersionSource } from '@/types/editor';
 import { AUTOSAVE_DELAY } from '@/lib/constants';
 import { generateId } from '@/lib/utils';
 import { createResumeDraftSnapshot } from '@/lib/editor/resume-draft';
 import { saveResumeVersion } from '@/lib/editor/resume-version-history';
+import { getLocalVersionHistoryFailureCopy } from '@/lib/editor/resume-version-history-status';
 import { useEditorStore } from '@/stores/editor-store';
 import { useSettingsStore } from '@/stores/settings-store';
 
@@ -32,6 +34,20 @@ interface ResumeStore {
 function pushUndoSnapshot(resume: Resume | null) {
   if (!resume) return;
   useEditorStore.getState().pushSnapshot(createResumeDraftSnapshot(resume));
+}
+
+let hasWarnedAboutLocalVersionHistoryFailure = false;
+
+function handleLocalVersionHistoryFailure(error: unknown) {
+  console.error('Failed to save local resume version:', error);
+
+  if (typeof window === 'undefined' || hasWarnedAboutLocalVersionHistoryFailure) {
+    return;
+  }
+
+  hasWarnedAboutLocalVersionHistoryFailure = true;
+  const copy = getLocalVersionHistoryFailureCopy(navigator.language);
+  toast.warning(copy.title, { description: copy.description });
 }
 
 export const useResumeStore = create<ResumeStore>((set, get) => ({
@@ -203,7 +219,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
           source,
         });
       } catch (error) {
-        console.error('Failed to save local resume version:', error);
+        handleLocalVersionHistoryFailure(error);
       }
       return;
     }
@@ -261,7 +277,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
           source,
         });
       } catch (error) {
-        console.error('Failed to save local resume version:', error);
+        handleLocalVersionHistoryFailure(error);
       }
     } finally {
       set({ isSaving: false });

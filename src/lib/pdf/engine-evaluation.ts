@@ -1,4 +1,4 @@
-import { generateHtml } from '@/app/api/resume/[id]/export/builders';
+import { generatePdfHtml } from '@/app/api/resume/[id]/export/builders';
 
 import {
   getPdfRegressionFixture,
@@ -25,6 +25,8 @@ export interface PdfRenderArtifact {
   paginationResult?: PaginationStrategyResult;
 }
 
+const BENCHMARK_FONT_BASE_URL = 'http://jadeai.test';
+
 async function loadOptionalModule(specifier: string): Promise<any> {
   const dynamicImport = new Function(
     'modulePath',
@@ -41,7 +43,7 @@ export async function preparePdfBenchmarkInputs(): Promise<PdfBenchmarkInput[]> 
     const resume = getPdfRegressionFixture(fixtureName);
     inputs.push({
       fixtureName,
-      html: await generateHtml(resume as any, true),
+      html: await generatePdfHtml(resume as any, BENCHMARK_FONT_BASE_URL),
     });
   }
 
@@ -53,10 +55,18 @@ async function renderWithPlaywright(html: string): Promise<PdfRenderArtifact> {
   const browser = await playwright.chromium.launch({ headless: true });
   try {
     const page = await browser.newPage({ viewport: { width: 794, height: 1123 } });
+    await page.emulateMedia({ media: 'print' });
     await page.setContent(html, { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
     const pdf = await page.pdf({
       format: 'A4',
+      preferCSSPageSize: true,
       scale: 1,
       printBackground: true,
       margin: { top: '0', right: '0', bottom: '0', left: '0' },

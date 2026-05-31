@@ -19,6 +19,12 @@ const LOCAL_CHROME_CANDIDATES = [
 ] as const;
 let hasWarnedAboutBundledChromiumFallback = false;
 
+type ChromiumEnv = Partial<Record<'ALLOW_CHROMIUM_DOWNLOAD' | 'CHROME_PATH' | 'VERCEL', string | undefined>>;
+
+type BrowserLaunchPlan =
+  | { kind: 'local'; executablePath: string; args?: string[] }
+  | { kind: 'download' };
+
 interface PdfOptions {
   fitOnePage?: boolean;
   paginationContext?: PaginationContext;
@@ -60,26 +66,61 @@ function warnBundledChromiumFallback() {
 
   hasWarnedAboutBundledChromiumFallback = true;
   console.warn(
-    'No local Chrome/Chromium found. Falling back to bundled Chromium; set CHROME_PATH to avoid the runtime download.',
+    'No local Chrome/Chromium found. Falling back to bundled Chromium because ALLOW_CHROMIUM_DOWNLOAD=true.',
+  );
+}
+
+function defaultHasAccess(executablePath: string): boolean {
+  try {
+    accessSync(executablePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function resolveBrowserLaunchPlan(
+  env: ChromiumEnv = process.env as ChromiumEnv,
+  hasAccess: (executablePath: string) => boolean = defaultHasAccess,
+): BrowserLaunchPlan {
+  const chromePath = env.CHROME_PATH?.trim();
+  if (chromePath) {
+    if (!hasAccess(chromePath)) {
+      throw new Error(`CHROME_PATH points to a missing or inaccessible executable: ${chromePath}`);
+    }
+
+    return {
+      kind: 'local',
+      executablePath: chromePath,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+    };
+  }
+
+  const executablePath = resolveLocalChromeExecutable(hasAccess);
+  if (executablePath) {
+    return { kind: 'local', executablePath };
+  }
+
+  if (env.ALLOW_CHROMIUM_DOWNLOAD === 'true') {
+    return { kind: 'download' };
+  }
+
+  const environment = env.VERCEL ? 'Vercel' : 'this environment';
+  throw new Error(
+    `No local Chrome/Chromium executable found for PDF export in ${environment}. ` +
+    'Install Chromium and set CHROME_PATH, or explicitly set ALLOW_CHROMIUM_DOWNLOAD=true to permit the runtime download fallback.',
   );
 }
 
 async function getBrowser() {
-  if (process.env.CHROME_PATH) {
+  const launchPlan = resolveBrowserLaunchPlan();
+
+  if (launchPlan.kind === 'local') {
     return puppeteer.launch({
-      executablePath: process.env.CHROME_PATH,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+      executablePath: launchPlan.executablePath,
+      args: launchPlan.args,
       headless: true,
     });
-  }
-
-  if (process.env.VERCEL) {
-    return launchBundledChromium();
-  }
-
-  const executablePath = resolveLocalChromeExecutable();
-  if (executablePath) {
-    return puppeteer.launch({ executablePath, headless: true });
   }
 
   warnBundledChromiumFallback();

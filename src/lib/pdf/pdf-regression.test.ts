@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 
-import { generateHtml } from '@/app/api/resume/[id]/export/builders';
-import { generatePdf } from '@/lib/pdf/generate-pdf';
+import { generatePdfHtml } from '@/app/api/resume/[id]/export/builders';
+import { generatePdf, resolveBrowserLaunchPlan } from '@/lib/pdf/generate-pdf';
 import { PDF_SAFE_PAGE_MARGIN_PX } from '@/lib/pdf/page-margins';
 import type { PaginationStrategyResult } from '@/lib/pdf/pagination-strategy';
 
@@ -19,6 +19,34 @@ interface PdfArtifact {
 }
 
 const artifactCache = new Map<string, Promise<PdfArtifact>>();
+const TEST_FONT_BASE_URL = 'http://jadeai.test';
+const PDF_RENDERER_SKIP_REASON = getPdfRendererSkipReason();
+
+function getPdfRendererSkipReason(): string | undefined {
+  try {
+    resolveBrowserLaunchPlan();
+    return undefined;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('No local Chrome/Chromium executable found')) {
+      return message;
+    }
+
+    throw error;
+  }
+}
+
+function testWithPdfRenderer(
+  t: TestContext,
+  name: string,
+  fn: () => Promise<void>,
+): Promise<void> {
+  if (PDF_RENDERER_SKIP_REASON) {
+    return t.test(name, { skip: PDF_RENDERER_SKIP_REASON }, fn);
+  }
+
+  return t.test(name, fn);
+}
 
 async function renderPdfArtifact(
   fixtureName: PdfRegressionFixtureName,
@@ -32,7 +60,7 @@ async function renderPdfArtifact(
 
   const pending = (async () => {
     const resume = getPdfRegressionFixture(fixtureName);
-    const html = await generateHtml(resume as any, true);
+    const html = await generatePdfHtml(resume as any, TEST_FONT_BASE_URL);
     let paginationResult: PaginationStrategyResult | undefined;
     const buffer = await generatePdf(html, {
       ...options,
@@ -63,7 +91,7 @@ async function renderPdfArtifact(
 }
 
 test('pdf regression suite', async (t) => {
-  await t.test('fitOnePage compresses modern long content onto a single page', async () => {
+  await testWithPdfRenderer(t, 'fitOnePage compresses modern long content onto a single page', async () => {
     const defaultArtifact = await renderPdfArtifact('modern-long-content');
     const fitArtifact = await renderPdfArtifact('modern-long-content', { fitOnePage: true });
 
@@ -75,9 +103,9 @@ test('pdf regression suite', async (t) => {
     assert.match(fitArtifact.text, /Modern Fit Marker Project/);
   });
 
-  await t.test('fitOnePage emits pagination telemetry', async () => {
+  await testWithPdfRenderer(t, 'fitOnePage emits pagination telemetry', async () => {
     const resume = getPdfRegressionFixture('modern-long-content');
-    const html = await generateHtml(resume as any, true);
+    const html = await generatePdfHtml(resume as any, TEST_FONT_BASE_URL);
     let paginationResult: PaginationStrategyResult | undefined;
 
     await generatePdf(html, {
@@ -93,7 +121,7 @@ test('pdf regression suite', async (t) => {
     assert.ok((paginationResult?.usableHeight ?? 0) > 0);
   });
 
-  await t.test('sidebar layout avoids a near-blank trailing page', async () => {
+  await testWithPdfRenderer(t, 'sidebar layout avoids a near-blank trailing page', async () => {
     const artifact = await renderPdfArtifact('sidebar-long-content');
     assert.match(artifact.text, /Edge Rollout Program Marker/);
 
@@ -106,7 +134,7 @@ test('pdf regression suite', async (t) => {
     }
   });
 
-  await t.test('swiss layout no longer defers the marker role to the next page', async () => {
+  await testWithPdfRenderer(t, 'swiss layout no longer defers the marker role to the next page', async () => {
     const artifact = await renderPdfArtifact('swiss-page-gap');
     assert.ok(artifact.pageCount >= 3);
     assert.match(
@@ -118,14 +146,14 @@ test('pdf regression suite', async (t) => {
 
   await t.test('swiss export widens section headers for page-top fragments', async () => {
     const resume = getPdfRegressionFixture('swiss-page-gap');
-    const html = await generateHtml(resume as any, true);
+    const html = await generatePdfHtml(resume as any, TEST_FONT_BASE_URL);
     assert.match(html, /data-section-heading="wide"/);
     assert.match(html, /margin-left:-10px;margin-right:-10px;padding-left:10px;padding-right:10px/);
   });
 
-  await t.test('gradient export reserves physical page safe margins', async () => {
+  await testWithPdfRenderer(t, 'gradient export reserves physical page safe margins', async () => {
     const resume = getPdfRegressionFixture('gradient-page-margin');
-    const html = await generateHtml(resume as any, true);
+    const html = await generatePdfHtml(resume as any, TEST_FONT_BASE_URL);
 
     assert.match(html, /@page \{\s*size: A4;\s*margin: 10mm 0 10mm 0;/);
     assert.match(html, new RegExp(`--pdf-page-margin-top: ${PDF_SAFE_PAGE_MARGIN_PX}px;`));
@@ -142,19 +170,19 @@ test('pdf regression suite', async (t) => {
     );
   });
 
-  await t.test('two-column fixture keeps extractable semantic text', async () => {
+  await testWithPdfRenderer(t, 'two-column fixture keeps extractable semantic text', async () => {
     const artifact = await renderPdfArtifact('two-column-balanced');
     assert.ok(artifact.pageCount >= 1);
     assert.match(artifact.text, /Systems Narrative Anchor/);
   });
 
-  await t.test('compact fixture renders dense content without dropping anchors', async () => {
+  await testWithPdfRenderer(t, 'compact fixture renders dense content without dropping anchors', async () => {
     const artifact = await renderPdfArtifact('compact-dense');
     assert.ok(artifact.pageCount >= 1);
     assert.match(artifact.text, /Compact Density Review Marker/);
   });
 
-  await t.test('neon dark fixture stays text-extractable', async () => {
+  await testWithPdfRenderer(t, 'neon dark fixture stays text-extractable', async () => {
     const artifact = await renderPdfArtifact('neon-dark-background');
     assert.ok(artifact.pageCount >= 1);
     assert.match(artifact.text, /Neon Dark Mode Portfolio/);

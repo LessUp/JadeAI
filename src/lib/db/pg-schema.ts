@@ -22,7 +22,7 @@ export const users = pgTable('users', {
 
 export const authAccounts = pgTable('auth_accounts', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text('user_id').notNull(),
+  userId: text('user_id').notNull().references(() => users.id),
   provider: text('provider').notNull(),
   providerAccountId: text('provider_account_id').notNull(),
   accessToken: text('access_token'),
@@ -35,7 +35,7 @@ export const authAccounts = pgTable('auth_accounts', {
 
 export const resumes = pgTable('resumes', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text('user_id').notNull(),
+  userId: text('user_id').notNull().references(() => users.id),
   title: text('title').notNull().default('未命名简历'),
   template: text('template').notNull().default('classic'),
   themeConfig: text('theme_config').default('{}'),
@@ -51,7 +51,7 @@ export const resumes = pgTable('resumes', {
 
 export const resumeSections = pgTable('resume_sections', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  resumeId: text('resume_id').notNull(),
+  resumeId: text('resume_id').notNull().references(() => resumes.id, { onDelete: 'cascade' }),
   type: text('type').notNull(),
   title: text('title').notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
@@ -63,7 +63,7 @@ export const resumeSections = pgTable('resume_sections', {
 
 export const chatSessions = pgTable('chat_sessions', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  resumeId: text('resume_id').notNull(),
+  resumeId: text('resume_id').notNull().references(() => resumes.id, { onDelete: 'cascade' }),
   title: text('title').notNull().default('新对话'),
   createdAt: integer('created_at').notNull().default(epochNow),
   updatedAt: integer('updated_at').notNull().default(epochNow),
@@ -71,7 +71,7 @@ export const chatSessions = pgTable('chat_sessions', {
 
 export const chatMessages = pgTable('chat_messages', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  sessionId: text('session_id').notNull(),
+  sessionId: text('session_id').notNull().references(() => chatSessions.id, { onDelete: 'cascade' }),
   role: text('role').notNull(),
   content: text('content').notNull(),
   metadata: text('metadata').default('{}'),
@@ -80,7 +80,7 @@ export const chatMessages = pgTable('chat_messages', {
 
 export const resumeShares = pgTable('resume_shares', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  resumeId: text('resume_id').notNull(),
+  resumeId: text('resume_id').notNull().references(() => resumes.id, { onDelete: 'cascade' }),
   token: text('token').notNull().unique(),
   label: text('label').notNull().default(''),
   password: text('password'),
@@ -92,7 +92,7 @@ export const resumeShares = pgTable('resume_shares', {
 
 export const jdAnalyses = pgTable('jd_analyses', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  resumeId: text('resume_id').notNull(),
+  resumeId: text('resume_id').notNull().references(() => resumes.id, { onDelete: 'cascade' }),
   jobDescription: text('job_description').notNull(),
   result: text('result').notNull(),
   overallScore: integer('overall_score').notNull(),
@@ -102,7 +102,7 @@ export const jdAnalyses = pgTable('jd_analyses', {
 
 export const grammarChecks = pgTable('grammar_checks', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  resumeId: text('resume_id').notNull(),
+  resumeId: text('resume_id').notNull().references(() => resumes.id, { onDelete: 'cascade' }),
   result: text('result').notNull(),
   score: integer('score').notNull(),
   issueCount: integer('issue_count').notNull(),
@@ -113,8 +113,8 @@ export const grammarChecks = pgTable('grammar_checks', {
 
 export const interviewSessions = pgTable('interview_sessions', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text('user_id').notNull(),
-  resumeId: text('resume_id'),
+  userId: text('user_id').notNull().references(() => users.id),
+  resumeId: text('resume_id').references(() => resumes.id),
   jobDescription: text('job_description').notNull(),
   jobTitle: text('job_title').notNull().default(''),
   selectedInterviewers: text('selected_interviewers').notNull().default('[]'),
@@ -126,7 +126,7 @@ export const interviewSessions = pgTable('interview_sessions', {
 
 export const interviewRounds = pgTable('interview_rounds', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  sessionId: text('session_id').notNull(),
+  sessionId: text('session_id').notNull().references(() => interviewSessions.id, { onDelete: 'cascade' }),
   interviewerType: text('interviewer_type').notNull(),
   interviewerConfig: text('interviewer_config').notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
@@ -140,7 +140,7 @@ export const interviewRounds = pgTable('interview_rounds', {
 
 export const interviewMessages = pgTable('interview_messages', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  roundId: text('round_id').notNull(),
+  roundId: text('round_id').notNull().references(() => interviewRounds.id, { onDelete: 'cascade' }),
   role: text('role').notNull(),
   content: text('content').notNull(),
   metadata: text('metadata').default('{}'),
@@ -149,7 +149,7 @@ export const interviewMessages = pgTable('interview_messages', {
 
 export const interviewReports = pgTable('interview_reports', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  sessionId: text('session_id').notNull().unique(),
+  sessionId: text('session_id').notNull().references(() => interviewSessions.id, { onDelete: 'cascade' }).unique(),
   overallScore: integer('overall_score').notNull(),
   dimensionScores: text('dimension_scores').notNull(),
   roundEvaluations: text('round_evaluations').notNull(),

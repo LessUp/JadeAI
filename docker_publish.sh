@@ -25,6 +25,10 @@ if ! docker buildx version >/dev/null 2>&1; then
   exit 1
 fi
 
+if [ "${SKIP_RELEASE_CHECK:-false}" != "true" ]; then
+  pnpm release:check
+fi
+
 tags=(
   -t "${IMAGE_REPOSITORY}:v${APP_VERSION}"
   -t "${IMAGE_REPOSITORY}:${APP_VERSION}"

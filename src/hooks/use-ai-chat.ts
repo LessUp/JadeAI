@@ -10,6 +10,7 @@ import {
   saveCurrentResumeVersion,
   syncResumeFromServer,
 } from '@/lib/editor/resume-history-actions';
+import { countCompletedToolParts, getNextToolResultReloadState } from '@/lib/ai/chat-stream-state';
 
 interface UseAIChatOptions {
   resumeId: string;
@@ -23,15 +24,6 @@ export interface AIStreamActivity {
   firstTokenAt?: number;
   lastTokenAt?: number;
   hasReceivedToken?: boolean;
-}
-
-function isCompletedToolPart(part: unknown): boolean {
-  if (!part || typeof part !== 'object') return false;
-
-  const candidate = part as { type?: unknown; state?: unknown };
-  return typeof candidate.type === 'string'
-    && candidate.type.startsWith('tool-')
-    && candidate.state === 'output-available';
 }
 
 function getMessageText(message?: AIChatUIMessage) {
@@ -130,13 +122,10 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
 
   // Reload resume data when new tool results appear during streaming
   useEffect(() => {
-    const completedToolCount = messages.reduce((count, m) => {
-      if (m.role !== 'assistant' || !m.parts) return count;
-      return count + m.parts.filter(isCompletedToolPart).length;
-    }, 0);
+    const nextState = getNextToolResultReloadState(completedToolCountRef.current, messages);
 
-    if (completedToolCount > completedToolCountRef.current) {
-      completedToolCountRef.current = completedToolCount;
+    if (nextState.shouldReload) {
+      completedToolCountRef.current = nextState.completedToolCount;
       reloadResume();
     }
   }, [messages, reloadResume]);
@@ -145,11 +134,7 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
   useEffect(() => {
     if (initialMessages) {
       // Pre-calculate tool count from initial messages to avoid triggering a redundant reload
-      const initialToolCount = initialMessages.reduce((count, m) => {
-        if (m.role !== 'assistant' || !m.parts) return count;
-        return count + m.parts.filter(isCompletedToolPart).length;
-      }, 0);
-      completedToolCountRef.current = initialToolCount;
+      completedToolCountRef.current = countCompletedToolParts(initialMessages);
       setMessages(initialMessages);
     }
   }, [initialMessages, setMessages]);

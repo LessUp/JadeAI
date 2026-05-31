@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { ResumeDraftSnapshot } from '@/types/editor';
 import type { Resume } from '@/types/resume';
-import { DEFAULT_THEME } from '@/lib/resume-theme/build-theme-css';
+import { DEFAULT_THEME } from '@/lib/resume-theme/default-theme';
 
 function makeDraft(title: string): ResumeDraftSnapshot {
   return {

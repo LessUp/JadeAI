@@ -121,7 +121,7 @@ test('generateHtml fills missing theme margin defaults for export CSS', async ()
     avatarStyle: 'oneInch',
   };
 
-  const html = await generateHtml(resume as any, true);
+  const html = await generateHtml(resume as any, true, 'http://jadeai.test');
 
   assert.match(html, /--base-margin-top: 32px;/);
   assert.match(html, /--base-margin-right: 20px;/);

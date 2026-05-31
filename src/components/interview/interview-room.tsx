@@ -8,6 +8,8 @@ import { useInterviewStore } from '@/stores/interview-store';
 import { useInterviewChat } from '@/hooks/use-interview-chat';
 import { useSettingsStore } from '@/stores/settings-store';
 import { INIT_TRIGGER } from '@/lib/interview/constants';
+import { dbInterviewMessagesToUIMessages } from '@/lib/interview/ui-message-adapter';
+import { shouldAutoStartRound } from '@/lib/interview/round-state';
 import { ProgressBar } from './progress-bar';
 import { InterviewerBanner } from './interviewer-banner';
 import { MessageList } from './message-list';
@@ -16,17 +18,6 @@ import { useInterviewControls } from './control-bar';
 import { RoundTransition } from './round-transition';
 import { ThinkingIndicator } from './thinking-indicator';
 import type { InterviewerConfig } from '@/types/interview';
-
-/** Convert DB messages to UIMessage format */
-function dbMessagesToUIMessages(dbMessages: any[]): UIMessage[] {
-  return dbMessages
-    .filter((m: any) => m.role !== 'system')
-    .map((m: any) => ({
-      id: m.id,
-      role: m.role === 'interviewer' ? ('assistant' as const) : ('user' as const),
-      parts: [{ type: 'text' as const, text: m.content }],
-    }));
-}
 
 interface InterviewRoomProps {
   sessionId: string;
@@ -40,6 +31,7 @@ export function InterviewRoom({ sessionId, initialMessages }: InterviewRoomProps
     useInterviewStore();
   const [showTransition, setShowTransition] = useState(false);
   const [isViewingHistory, setIsViewingHistory] = useState(false);
+  const [loadingRoundId, setLoadingRoundId] = useState<string | null>(null);
 
   const currentRound = rounds[currentRoundIndex];
   const interviewerConfig = currentRound?.interviewerConfig as InterviewerConfig;
@@ -53,30 +45,36 @@ export function InterviewRoom({ sessionId, initialMessages }: InterviewRoomProps
     });
 
   // Load initial messages from DB on first render
-  const loadedRef = useRef(false);
-  useEffect(() => {
-    if (initialMessages && initialMessages.length > 0 && !loadedRef.current) {
-      loadedRef.current = true;
-      setMessages(initialMessages);
-    }
-  }, [initialMessages, setMessages]);
+    const loadedInitialRoundRef = useRef<string | null>(null);
+    const sentInitRef = useRef<string | null>(null);
+    useEffect(() => {
+      if (
+        initialMessages &&
+        initialMessages.length > 0 &&
+        currentRound?.id &&
+        loadedInitialRoundRef.current !== currentRound.id
+      ) {
+        loadedInitialRoundRef.current = currentRound.id;
+        sentInitRef.current = currentRound.id;
+        setMessages(initialMessages);
+      }
+    }, [currentRound?.id, initialMessages, setMessages]);
 
-  // Auto-send trigger to start interview (only if no history and round is active)
-  const sentInitRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (
-      currentRound &&
-      messages.length === 0 &&
-      !isLoading &&
-      !loadedRef.current &&
-      !isViewingHistory &&
-      !isRoundDone &&
-      sentInitRef.current !== currentRound.id
-    ) {
+    // Auto-send trigger to start interview (only if no history and round is active)
+    useEffect(() => {
+    if (shouldAutoStartRound({
+      roundId: currentRound?.id,
+      messageCount: messages.length,
+      isLoading,
+      isViewingHistory,
+      isRoundDone,
+      loadingRoundId,
+      lastInitRoundId: sentInitRef.current,
+    })) {
       sentInitRef.current = currentRound.id;
       sendMessage({ text: INIT_TRIGGER });
     }
-  }, [currentRound?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentRound?.id, isLoading, isRoundDone, isViewingHistory, loadingRoundId, messages.length, sendMessage]);
 
   // Detect round completion
   useEffect(() => {
@@ -95,6 +93,7 @@ export function InterviewRoom({ sessionId, initialMessages }: InterviewRoomProps
     if (!targetRound) return;
 
     setShowTransition(false);
+    setLoadingRoundId(targetRound.id);
     setCurrentRoundIndex(index);
 
     // Fetch messages for this round
@@ -107,21 +106,26 @@ export function InterviewRoom({ sessionId, initialMessages }: InterviewRoomProps
       const roundData = roundsWithMessages.find((r: any) => r.id === targetRound.id);
 
       if (roundData?.messages?.length > 0) {
-        setMessages(dbMessagesToUIMessages(roundData.messages));
+        setMessages(dbInterviewMessagesToUIMessages(roundData.messages));
+        sentInitRef.current = targetRound.id;
       } else {
         setMessages([]);
+        sentInitRef.current = targetRound.status === 'completed' || targetRound.status === 'skipped'
+          ? targetRound.id
+          : null;
       }
     } catch (err) {
       console.error('Failed to load round messages:', err);
       setMessages([]);
+      sentInitRef.current = targetRound.status === 'completed' || targetRound.status === 'skipped'
+        ? targetRound.id
+        : null;
+    } finally {
+      setLoadingRoundId(null);
     }
 
     const isDone = targetRound.status === 'completed' || targetRound.status === 'skipped';
     setIsViewingHistory(isDone);
-
-    // Reset init refs
-    loadedRef.current = true;
-    sentInitRef.current = targetRound.id;
   }, [rounds, sessionId, setCurrentRoundIndex, setMessages]);
 
   const handleNextRound = useCallback(() => {
@@ -129,7 +133,6 @@ export function InterviewRoom({ sessionId, initialMessages }: InterviewRoomProps
     setIsViewingHistory(false);
     advanceToNextRound();
     resetMessages();
-    loadedRef.current = false;
     sentInitRef.current = null;
   }, [advanceToNextRound, resetMessages]);
 

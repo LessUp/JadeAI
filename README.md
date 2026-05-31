@@ -68,7 +68,7 @@ JadeAI 是一个面向简历编辑、AI 优化和求职准备的全栈应用。�
 - **多格式导出**：PDF、智能一页 PDF、DOCX、HTML、TXT、JSON
 - **JSON 导入**：可恢复现有简历或创建新简历
 - **分享链接**：支持密码保护与访问统计
-- **本地 PDF 渲染依赖**：优先使用系统 Chrome / Chromium；如未找到，会提示并回退到 bundled Chromium。可通过 `CHROME_PATH` 显式指定浏览器路径以避免运行时下载。
+- **本地 PDF 渲染依赖**：优先使用系统 Chrome / Chromium。生产环境建议设置 `CHROME_PATH` 指向已安装的浏览器；如确实需要运行时下载 bundled Chromium，必须显式设置 `ALLOW_CHROMIUM_DOWNLOAD=true`。
 - **PDF 分页引擎**：`fit-one-page` 与 `prevent-blank-page` 现在共用同一个分页策略入口，并可在 `node --import tsx scripts/benchmark-pdf-layout.ts` 中输出分页 telemetry，便于比较不同渲染引擎与压缩效果。
 
 ## 技术栈
@@ -152,6 +152,7 @@ Docker 镜像版本现在统一以 `package.json` 的 `version` 为唯一来源�
 pnpm version patch --no-git-tag-version
 # 然后补一份 changelog/YYYY-MM-DD-vX.Y.Z-release.md
 
+pnpm release:check
 docker login
 IMAGE_REPOSITORY=shuai0/jadeai pnpm docker:publish
 ```

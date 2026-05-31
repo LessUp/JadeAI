@@ -52,6 +52,7 @@ export class SQLiteAdapter implements DatabaseAdapter {
         return;
       }
       console.error('[DB] SQLite migration failed:', e);
+      throw e;
     }
   }
 
@@ -68,6 +69,7 @@ export class SQLiteAdapter implements DatabaseAdapter {
         return;
       }
       console.error('[DB] SQLite auto-seed failed:', e);
+      throw e;
     }
   }
 

@@ -19,6 +19,7 @@
     "docker:build": "BUILD_ONLY=true bash ./docker_run_local.sh",
     "docker:run": "bash ./docker_run_local.sh",
     "docker:publish": "bash ./docker_publish.sh",
+    "release:check": "bash ./scripts/verify-release.sh",
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",

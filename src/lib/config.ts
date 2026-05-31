@@ -4,7 +4,7 @@ export const config = {
     providers: ['google'] as const,
   },
   db: {
-    type: (process.env.DB_TYPE || 'sqlite') as 'postgresql' | 'sqlite',
+    type: process.env.DB_TYPE || 'sqlite',
   },
   i18n: {
     defaultLocale: 'zh' as const,

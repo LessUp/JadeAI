@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
 import { generatePdf } from '@/lib/pdf/generate-pdf';
-import { generateHtml } from './builders';
+import { generateHtml, generatePdfHtml } from './builders';
 import { generatePlainText } from './plain-text';
 import { generateDocxBuffer } from './docx';
 
@@ -73,7 +73,7 @@ export async function GET(
       }
       case 'pdf': {
         const fitOnePage = request.nextUrl.searchParams.get('fitOnePage') === 'true';
-        const pdfHtml = await generateHtml(resume, true, request.nextUrl.origin);
+        const pdfHtml = await generatePdfHtml(resume, request.nextUrl.origin);
         const pdfBuffer = await generatePdf(pdfHtml, { fitOnePage });
         return new NextResponse(new Uint8Array(pdfBuffer), {
           status: 200,

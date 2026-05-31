@@ -5,6 +5,12 @@ import postgres from 'postgres';
 import type { DatabaseAdapter } from '../adapter';
 import { resolve } from 'path';
 
+function isConcurrentSeedError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const code = 'code' in error ? error.code : undefined;
+  return code === '23505';
+}
+
 export class PostgreSQLAdapter implements DatabaseAdapter {
   db;
   private client: ReturnType<typeof postgres>;
@@ -37,6 +43,7 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       console.log('[DB] PostgreSQL migrations applied');
     } catch (e) {
       console.error('[DB] PostgreSQL migration failed:', e);
+      throw e;
     }
 
     // Auto-seed if empty
@@ -49,7 +56,11 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
         console.log('[DB] PostgreSQL auto-seed complete');
       }
     } catch (e) {
+      if (isConcurrentSeedError(e)) {
+        return;
+      }
       console.error('[DB] PostgreSQL auto-seed failed:', e);
+      throw e;
     }
   }
 

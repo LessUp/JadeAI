@@ -5,6 +5,7 @@ import type { UIMessage } from 'ai';
 import { InterviewerMessage } from './interviewer-message';
 import { CandidateMessage } from './candidate-message';
 import { HIDDEN_MESSAGES } from '@/lib/interview/constants';
+import { getInterviewRole } from '@/lib/interview/ui-message-adapter';
 import type { InterviewerConfig } from '@/types/interview';
 
 interface MessageListProps {
@@ -27,14 +28,15 @@ export function MessageList({ messages, interviewerConfig }: MessageListProps) {
         if (!content) return null;
 
         // Hide system trigger messages
-        if (msg.role === 'user' && HIDDEN_MESSAGES.has(content.trim())) {
+        const interviewRole = getInterviewRole(msg);
+        if (interviewRole === 'system' || (msg.role === 'user' && HIDDEN_MESSAGES.has(content.trim()))) {
           return null;
         }
 
-        if (msg.role === 'assistant') {
+        if (interviewRole === 'interviewer' || msg.role === 'assistant') {
           return <InterviewerMessage key={msg.id} content={content} config={interviewerConfig} />;
         }
-        if (msg.role === 'user') {
+        if (interviewRole === 'candidate' || msg.role === 'user') {
           return <CandidateMessage key={msg.id} content={content} messageId={msg.id} />;
         }
         return null;

@@ -43,6 +43,7 @@ import { TemplateThumbnail } from '@/components/dashboard/template-thumbnail';
 import { cn } from '@/lib/utils';
 import type { ThemeConfig } from '@/types/resume';
 import { commitResumeChange } from '@/lib/editor/resume-history-actions';
+import { DEFAULT_THEME, mergeThemeConfig } from '@/lib/resume-theme/build-theme-css';
 
 // -- Preset Themes --
 
@@ -160,17 +161,6 @@ const PRESET_THEMES: PresetTheme[] = [
   },
 ];
 
-const DEFAULT_THEME: ThemeConfig = {
-  primaryColor: '#1a1a1a',
-  accentColor: '#3b82f6',
-  fontFamily: 'Inter',
-  fontSize: 'medium',
-  lineSpacing: 1.5,
-  margin: { top: 20, right: 20, bottom: 20, left: 20 },
-  sectionSpacing: 16,
-  avatarStyle: 'oneInch',
-};
-
 const FONT_SIZE_OPTIONS = [
   { value: 'small', label: '' },
   { value: 'medium', label: '' },
@@ -216,7 +206,7 @@ function ColorPickerField({
               value={value}
               onChange={(e) => {
                 const v = e.target.value;
-                if (/^#[0-9a-fA-F]{0,6}$/.test(v)) {
+                if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v)) {
                   onChange(v);
                 }
               }}
@@ -269,19 +259,24 @@ export function ThemeEditor() {
   const { currentResume } = useResumeStore();
 
   const themeConfig: ThemeConfig = useMemo(
-    () => ({
-      ...DEFAULT_THEME,
-      ...(currentResume?.themeConfig || {}),
-    }),
+    () => mergeThemeConfig(currentResume?.themeConfig),
     [currentResume?.themeConfig]
   );
 
   const updateTheme = useCallback(
     (updates: Partial<ThemeConfig>) => {
       if (!currentResume) return;
+      const themeConfig = mergeThemeConfig({
+        ...currentResume.themeConfig,
+        ...updates,
+        margin: {
+          ...currentResume.themeConfig?.margin,
+          ...updates.margin,
+        },
+      });
       void commitResumeChange((draft) => ({
         ...draft,
-        themeConfig: { ...draft.themeConfig, ...updates },
+        themeConfig,
       }));
     },
     [currentResume]

@@ -278,3 +278,10 @@ export async function generateHtml(
 </body>
 </html>`;
 }
+
+export async function generatePdfHtml(
+  resume: ResumeWithSections,
+  fontBaseUrl: string,
+): Promise<string> {
+  return generateHtml(resume, true, fontBaseUrl);
+}
