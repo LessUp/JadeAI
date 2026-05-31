@@ -104,6 +104,8 @@ If you only want to build the image:
 pnpm docker:build
 ```
 
+The image now uses Debian slim instead of Alpine so Chromium and CJK font installation no longer depends on `apk`, which avoids the TLS and timeout failures some proxy setups hit during Docker builds.
+
 If you prefer a host bind mount for the database:
 
 ```bash

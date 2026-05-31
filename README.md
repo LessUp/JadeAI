@@ -106,6 +106,8 @@ pnpm docker:run
 pnpm docker:build
 ```
 
+镜像现在基于 Debian slim 构建，而不是 Alpine，这样安装 Chromium 与 CJK 字体时不会再依赖 `apk`，能规避部分代理环境下的 TLS / 超时问题。
+
 如果你想改为宿主机目录持久化数据库：
 
 ```bash
