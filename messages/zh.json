@@ -144,7 +144,9 @@
       "summary": "模板：{template} · 语言：{language} · 模块数：{sections}",
       "restore": "恢复",
       "restoreSuccess": "已恢复到所选版本。",
+      "restoreNoop": "当前已经是这个版本。",
       "restoreError": "恢复该版本失败。",
+      "restoreVerificationFailed": "恢复后验证失败，请重试。",
       "loadError": "加载本地版本历史失败。",
       "source": {
         "autosave": "自动保存",

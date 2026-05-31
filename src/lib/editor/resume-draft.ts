@@ -1,5 +1,6 @@
 import type { Resume } from '@/types/resume';
 import type { ResumeDraftSnapshot } from '@/types/editor';
+export type { ResumeDraftSnapshot } from '@/types/editor';
 
 export function cloneResumeDraftSnapshot(snapshot: ResumeDraftSnapshot): ResumeDraftSnapshot {
   return structuredClone(snapshot);

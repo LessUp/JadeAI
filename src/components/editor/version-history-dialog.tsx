@@ -79,12 +79,21 @@ export function VersionHistoryDialog({
   const handleRestore = useCallback(async (version: ResumeVersionRecord) => {
     setRestoringId(version.id);
     try {
-      await restoreResumeVersion(version);
+      const result = await restoreResumeVersion(version);
+      if (result.status === 'noop') {
+        toast.info(t('restoreNoop'));
+        return;
+      }
+
       toast.success(t('restoreSuccess'));
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to restore local resume version:', error);
-      toast.error(error instanceof Error ? error.message : t('restoreError'));
+      const message =
+        error instanceof Error && /restore verification failed/i.test(error.message)
+          ? t('restoreVerificationFailed')
+          : t('restoreError');
+      toast.error(message);
     } finally {
       setRestoringId(null);
     }

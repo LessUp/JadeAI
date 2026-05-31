@@ -46,3 +46,4 @@ jadeai-data/*
 .worktrees/
 
 test
+/.worktrees/
