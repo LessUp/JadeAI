@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { generateHtml } from '@/app/api/resume/[id]/export/builders';
 import { generatePdf } from '@/lib/pdf/generate-pdf';
+import { PDF_SAFE_PAGE_MARGIN_PX } from '@/lib/pdf/page-margins';
 import type { PaginationStrategyResult } from '@/lib/pdf/pagination-strategy';
 
 import {
@@ -14,6 +15,7 @@ interface PdfArtifact {
   pageCount: number;
   pages: string[];
   text: string;
+  paginationResult?: PaginationStrategyResult;
 }
 
 const artifactCache = new Map<string, Promise<PdfArtifact>>();
@@ -31,7 +33,13 @@ async function renderPdfArtifact(
   const pending = (async () => {
     const resume = getPdfRegressionFixture(fixtureName);
     const html = await generateHtml(resume as any, true);
-    const buffer = await generatePdf(html, options);
+    let paginationResult: PaginationStrategyResult | undefined;
+    const buffer = await generatePdf(html, {
+      ...options,
+      onPaginationResult: (result) => {
+        paginationResult = result;
+      },
+    });
     const mupdf = await import('mupdf');
     const document = mupdf.Document.openDocument(new Uint8Array(buffer), 'application/pdf');
     const pageCount = document.countPages();
@@ -46,6 +54,7 @@ async function renderPdfArtifact(
       pageCount,
       pages,
       text: pages.join('\n').trim(),
+      paginationResult,
     };
   })();
 
@@ -112,6 +121,25 @@ test('pdf regression suite', async (t) => {
     const html = await generateHtml(resume as any, true);
     assert.match(html, /data-section-heading="wide"/);
     assert.match(html, /margin-left:-10px;margin-right:-10px;padding-left:10px;padding-right:10px/);
+  });
+
+  await t.test('gradient export reserves physical page safe margins', async () => {
+    const resume = getPdfRegressionFixture('gradient-page-margin');
+    const html = await generateHtml(resume as any, true);
+
+    assert.match(html, /@page \{\s*size: A4;\s*margin: 10mm 0 10mm 0;/);
+    assert.match(html, new RegExp(`--pdf-page-margin-top: ${PDF_SAFE_PAGE_MARGIN_PX}px;`));
+    assert.match(html, new RegExp(`--pdf-page-margin-bottom: ${PDF_SAFE_PAGE_MARGIN_PX}px;`));
+    assert.match(html, /span\[class\*="rounded-full"\] \{ break-inside: avoid !important; \}/);
+
+    const artifact = await renderPdfArtifact('gradient-page-margin');
+    assert.match(artifact.text, /后端 & 数据中间件/);
+    assert.match(artifact.text, /Gradient Page Safe Margin Marker/);
+
+    assert.ok(
+      (artifact.paginationResult?.usableHeight ?? Number.POSITIVE_INFINITY) <=
+        1123 - PDF_SAFE_PAGE_MARGIN_PX * 2,
+    );
   });
 
   await t.test('two-column fixture keeps extractable semantic text', async () => {

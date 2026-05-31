@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   getUsableHeight,
+  getMaxMarginDelta,
   resolvePaginationTargetPlan,
   resolvePaginationStrategyConfig,
   type PaginationContext,
@@ -29,7 +30,10 @@ function createContext(
     lineSpacing: 1.5,
     marginTop: 20,
     marginBottom: 20,
+    marginLeft: 20,
+    marginRight: 20,
     childPaddingTop: 20,
+    fragmentPaddingFloor: 8,
   };
 }
 
@@ -66,7 +70,7 @@ test('resolvePaginationStrategyConfig disables blank-page mode when prevention i
   assert.equal(config.maxIterations, 0);
 });
 
-test('getUsableHeight models standard PDF page margins even without CSS padding', () => {
+test('getUsableHeight models physical PDF page margins', () => {
   assert.equal(getUsableHeight(createContext({ pageMode: 'standard' })), 1083);
   assert.equal(
     getUsableHeight({
@@ -79,8 +83,41 @@ test('getUsableHeight models standard PDF page margins even without CSS padding'
     getUsableHeight({
       ...createContext({ pageMode: 'edge-to-edge' }),
       needsPadding: false,
+      marginTop: 0,
+      marginBottom: 0,
     }),
     1123,
+  );
+});
+
+test('getUsableHeight reserves background template physical safe margins', () => {
+  assert.equal(
+    getUsableHeight({
+      ...createContext({ pageMode: 'edge-to-edge', surfaceMode: 'background' }),
+      needsPadding: false,
+      marginTop: 38,
+      marginBottom: 38,
+    }),
+    1047,
+  );
+});
+
+test('getMaxMarginDelta preserves edge-to-edge fragment padding floor', () => {
+  assert.equal(
+    getMaxMarginDelta({
+      ...createContext({ shrinkTarget: 'child-padding' }),
+      childPaddingTop: 19,
+      fragmentPaddingFloor: 19,
+    }),
+    0,
+  );
+  assert.equal(
+    getMaxMarginDelta({
+      ...createContext({ shrinkTarget: 'child-padding' }),
+      childPaddingTop: 32,
+      fragmentPaddingFloor: 19,
+    }),
+    13,
   );
 });
 

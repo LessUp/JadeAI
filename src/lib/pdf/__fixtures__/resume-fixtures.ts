@@ -285,6 +285,64 @@ function createSwissPageGapFixture(): Resume {
   return resume;
 }
 
+function createGradientPageMarginFixture(): Resume {
+  const resume = createResumeFixture({
+    id: 'fixture-gradient-margin',
+    title: 'Gradient Page Margin Probe',
+    template: 'gradient',
+    fullName: 'Avery Gradient Probe',
+    summaryParagraphs: 2,
+    workCount: 2,
+    workHighlights: 3,
+    workDescriptionRepeat: 2,
+    skillCategories: 5,
+    skillsPerCategory: 6,
+    projectCount: 3,
+    certificationCount: 1,
+    projectAnchor: 'Gradient Page Safe Margin Marker',
+    theme: {
+      margin: { top: 20, right: 20, bottom: 20, left: 20 },
+      sectionSpacing: 16,
+      lineSpacing: 1.5,
+    },
+  });
+
+  const skillsSection = resume.sections.find((section) => section.type === 'skills');
+  const projectSection = resume.sections.find((section) => section.type === 'projects');
+
+  if (skillsSection && 'categories' in skillsSection.content) {
+    skillsSection.title = '专业技能';
+    skillsSection.content.categories = [
+      {
+        id: 'gradient-skill-performance',
+        name: '性能分析与工程效能',
+        skills: ['Intel VTune / Linux perf', 'Valgrind / AddressSanitizer / UBSan', 'GDB 调试'],
+      },
+      {
+        id: 'gradient-skill-tooling',
+        name: '构建与交付',
+        skills: ['CMake / Makefile', 'Git / GitHub Actions', 'Linux (RHEL/Ubuntu)'],
+      },
+      {
+        id: 'gradient-skill-backend',
+        name: '后端 & 数据中间件',
+        skills: ['MySQL / Redis / ClickHouse', 'Elasticsearch / ELK', 'ZooKeeper / NSQ', 'Docker / Grafana'],
+      },
+      {
+        id: 'gradient-skill-ai',
+        name: 'AI 工程化 & 算法',
+        skills: ['Prompt Engineering / RAG', 'LangChain / Dify / FastAPI', 'OpenCV / Caffe / TensorFlow'],
+      },
+    ];
+  }
+
+  if (projectSection) {
+    projectSection.title = '项目经历';
+  }
+
+  return resume;
+}
+
 export const PDF_REGRESSION_FIXTURES = {
   'modern-long-content': createResumeFixture({
     id: 'fixture-modern',
@@ -383,6 +441,7 @@ export const PDF_REGRESSION_FIXTURES = {
     },
   }),
   'swiss-page-gap': createSwissPageGapFixture(),
+  'gradient-page-margin': createGradientPageMarginFixture(),
 } as const satisfies Record<string, Resume>;
 
 export type PdfRegressionFixtureName = keyof typeof PDF_REGRESSION_FIXTURES;

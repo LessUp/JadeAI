@@ -52,8 +52,11 @@ export interface PaginationContext {
   lineSpacing: number;
   marginTop: number;
   marginBottom: number;
+  marginLeft: number;
+  marginRight: number;
   needsPadding: boolean;
   childPaddingTop: number;
+  fragmentPaddingFloor: number;
 }
 
 export interface PaginationStrategyResult {
@@ -204,6 +207,17 @@ async function readPaginationContext(page: Page): Promise<PaginationContext> {
     const needsPadding = computed?.getPropertyValue('--needs-padding')?.trim() === '1';
     const child = container?.querySelector(':scope > div') as HTMLElement | null;
     const childPaddingTop = child ? parseFloat(getComputedStyle(child).paddingTop) || 0 : 0;
+    const readPx = (name: string, fallback: number) => {
+      const raw = computed?.getPropertyValue(name).trim();
+      if (!raw) {
+        return fallback;
+      }
+
+      const value = parseFloat(raw);
+      return Number.isFinite(value) ? value : fallback;
+    };
+    const baseMarginTop = readPx('--base-margin-top', 20);
+    const baseMarginBottom = readPx('--base-margin-bottom', 20);
 
     return {
       profile: {
@@ -220,18 +234,19 @@ async function readPaginationContext(page: Page): Promise<PaginationContext> {
       },
       sectionSpacing: computed ? parseFloat(computed.getPropertyValue('--base-section-spacing')) || 16 : 16,
       lineSpacing: computed ? parseFloat(computed.getPropertyValue('--base-line-spacing')) || 1.5 : 1.5,
-      marginTop: computed ? parseFloat(computed.getPropertyValue('--base-margin-top')) || 20 : 20,
-      marginBottom: computed ? parseFloat(computed.getPropertyValue('--base-margin-bottom')) || 20 : 20,
+      marginTop: readPx('--pdf-page-margin-top', baseMarginTop),
+      marginBottom: readPx('--pdf-page-margin-bottom', baseMarginBottom),
+      marginLeft: readPx('--base-margin-left', 20),
+      marginRight: readPx('--base-margin-right', 20),
       needsPadding,
       childPaddingTop,
+      fragmentPaddingFloor: readPx('--pdf-fragment-padding-floor', 8),
     };
   });
 }
 
 export function getUsableHeight(context: PaginationContext): number {
-  return context.profile.pageMode === 'standard' || context.needsPadding
-    ? A4_HEIGHT_PX - context.marginTop - context.marginBottom
-    : A4_HEIGHT_PX;
+  return A4_HEIGHT_PX - context.marginTop - context.marginBottom;
 }
 
 export function resolvePaginationTargetPlan(
@@ -319,12 +334,12 @@ export function resolvePaginationTargetPlan(
   };
 }
 
-function getMaxMarginDelta(context: PaginationContext): number {
+export function getMaxMarginDelta(context: PaginationContext): number {
   if (context.profile.shrinkTarget === 'child-padding') {
-    return Math.max(0, Math.round(context.childPaddingTop - 8));
+    return Math.max(0, Math.round(context.childPaddingTop - context.fragmentPaddingFloor));
   }
 
-  return Math.max(0, context.marginTop - 8);
+  return Math.max(0, Math.round(Math.min(context.marginLeft, context.marginRight) - 8));
 }
 
 async function injectStyle(page: Page, id: string, css: string): Promise<void> {

@@ -7,6 +7,7 @@ import {
   getPdfLayoutDataAttributes,
   getPdfLayoutProfile,
 } from '@/lib/pdf/layout-profile';
+import { resolvePdfPageMargins } from '@/lib/pdf/page-margins';
 import { mergeThemeConfig } from '@/lib/resume-theme/build-theme-css';
 import { generateQrSvg } from '@/lib/qrcode';
 import { buildClassicHtml } from './templates/classic';
@@ -168,17 +169,23 @@ export async function generateHtml(
   const embeddedFontsCss = getEmbeddedFontFacesCss(fontBaseUrl);
   const bodyBg = getPdfBodyBackground(layoutProfile);
 
-  const pxToMm = (px: number) => Math.round((px / 3.78) * 10) / 10;
-  const pageMarginTop = pxToMm(theme.margin.top);
-  const pageMarginBottom = pxToMm(theme.margin.bottom);
+  const pageMargins = resolvePdfPageMargins(layoutProfile, theme.margin);
 
   const pdfOverrides = forPdf
     ? `/* Page margins and fragmentation */
        @page {        size: A4;
-       margin: ${layoutProfile.pageMode === 'edge-to-edge' ? '0' : `${pageMarginTop}mm 0 ${pageMarginBottom}mm 0`}; }
+       margin: ${pageMargins.css}; }
        html, body { background: ${bodyBg} !important; padding: 0 !important; margin: 0 !important; display: block !important; min-height: 100%; }
        .resume-export { width: 100%; }
-       .resume-export > div { box-shadow: none !important; overflow: visible !important; ${layoutProfile.outerCloneMode === 'clone' ? '-webkit-box-decoration-break: clone; box-decoration-break: clone;' : layoutProfile.outerCloneMode === 'slice' ? '-webkit-box-decoration-break: slice; box-decoration-break: slice;' : 'padding-top: 0 !important; padding-bottom: 0 !important;'} ${layoutProfile.surfaceMode === 'sidebar-dark' ? 'min-height: auto !important; max-width: none !important; width: 100% !important; background: transparent !important;' : layoutProfile.pageMode === 'edge-to-edge' ? 'max-width: none !important; width: 100% !important;' : 'background: white !important;'} }
+       .resume-export > div {
+         --pdf-page-margin-top: ${pageMargins.topPx}px;
+         --pdf-page-margin-bottom: ${pageMargins.bottomPx}px;
+         --pdf-fragment-padding-floor: ${pageMargins.fragmentPaddingFloorPx}px;
+         box-shadow: none !important;
+         overflow: visible !important;
+         ${layoutProfile.outerCloneMode === 'clone' ? '-webkit-box-decoration-break: clone; box-decoration-break: clone;' : layoutProfile.outerCloneMode === 'slice' ? '-webkit-box-decoration-break: slice; box-decoration-break: slice;' : 'padding-top: 0 !important; padding-bottom: 0 !important;'}
+         ${layoutProfile.surfaceMode === 'sidebar-dark' ? 'min-height: auto !important; max-width: none !important; width: 100% !important; background: transparent !important;' : layoutProfile.pageMode === 'edge-to-edge' ? 'max-width: none !important; width: 100% !important;' : 'background: white !important;'}
+       }
        /* Smart pagination: allow sections to break across pages, keep individual items together.
           overflow:visible is critical — Chrome treats overflow:hidden as monolithic (no page fragmentation). */
        [data-section] { break-inside: auto !important; overflow: visible !important; }
@@ -186,6 +193,7 @@ export async function generateHtml(
        [data-section] [class*="space-y"] { break-inside: auto !important; }
        [data-section] [class*="space-y"] > div, .item { break-inside: avoid !important; }
        [data-section] [class*="space-y"] > [data-pdf-entry] { break-inside: auto !important; }
+       .resume-export span[class*="rounded-full"] { break-inside: avoid !important; }
        [data-pdf-entry] [data-pdf-entry-header],
        [data-section-heading] { break-inside: avoid !important; }
        h2, h3 { break-after: avoid !important; }
