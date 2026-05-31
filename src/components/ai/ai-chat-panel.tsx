@@ -10,7 +10,7 @@ import { useEditorStore } from '@/stores/editor-store';
 import { useSettingsStore, getAIHeaders } from '@/stores/settings-store';
 import { useAIChat } from '@/hooks/use-ai-chat';
 import { useMessagePagination } from '@/hooks/use-message-pagination';
-import type { AIChatStatus, AIChatUIMessage } from '@/types/ai';
+import type { AIChatErrorKind, AIChatMessageMetadata, AIChatStatus, AIChatUIMessage } from '@/types/ai';
 import { AIMessage } from './ai-message';
 import { AIInput } from './ai-input';
 
@@ -49,17 +49,52 @@ function isConnectionError(message: string) {
   return /ETIMEDOUT|ECONNRESET|ECONNREFUSED|Cannot connect|Failed to fetch|fetch failed|network/i.test(message);
 }
 
-function getStatusTone(status?: AIChatStatus | 'disconnected') {
+type StatusTone = AIChatStatus | 'disconnected' | 'timeout' | 'output_limit' | 'provider';
+
+function getStatusTone(status?: StatusTone) {
   switch (status) {
     case 'completed':
       return 'border-emerald-200 bg-emerald-50 text-emerald-700';
     case 'error':
     case 'disconnected':
+    case 'timeout':
+    case 'provider':
       return 'border-red-200 bg-red-50 text-red-700';
     case 'aborted':
+    case 'output_limit':
       return 'border-amber-200 bg-amber-50 text-amber-700';
     default:
       return 'border-zinc-200 bg-zinc-50 text-zinc-600';
+  }
+}
+
+function secondsSince(nowMs: number, timestamp?: number) {
+  if (!timestamp) return undefined;
+  return Math.max(0, Math.floor((nowMs - timestamp) / 1000));
+}
+
+function isStaleStreamingMetadata(metadata: AIChatMessageMetadata | undefined, nowMs: number) {
+  if (!metadata?.startedAt || metadata.endedAt) return false;
+  if (metadata.status !== 'submitted' && metadata.status !== 'streaming') return false;
+  const lastActivityAt = metadata.lastChunkAt ?? metadata.startedAt;
+  return nowMs - lastActivityAt > 150_000;
+}
+
+function getErrorKindTone(errorKind?: AIChatErrorKind): StatusTone {
+  switch (errorKind) {
+    case 'output_limit':
+      return 'output_limit';
+    case 'timeout_total':
+    case 'timeout_chunk':
+      return 'timeout';
+    case 'client_abort':
+      return 'aborted';
+    case 'network':
+      return 'disconnected';
+    case 'provider':
+      return 'provider';
+    default:
+      return 'error';
   }
 }
 
@@ -78,6 +113,7 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
   const [initialMessages, setInitialMessages] = useState<AIChatUIMessage[]>();
   const [sessionsLoaded, setSessionsLoaded] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const { historicalMessages, hasMore, isLoadingMore, loadInitial, loadMore, reset: resetPagination } = useMessagePagination();
 
@@ -95,6 +131,7 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
     isLoading,
     status,
     error: chatError,
+    streamActivity,
     sendMessage,
     stopStreaming,
     lastTerminalStatus,
@@ -105,6 +142,13 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
     initialMessages,
     selectedModel,
   });
+
+  useEffect(() => {
+    if (status !== 'submitted' && status !== 'streaming') return;
+    setNowMs(Date.now());
+    const intervalId = window.setInterval(() => setNowMs(Date.now()), 1_000);
+    return () => window.clearInterval(intervalId);
+  }, [status]);
 
   // Sync selectedModel when settings hydrate or user changes default model
   useEffect(() => {
@@ -277,16 +321,54 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
     if (status === 'submitted') {
       return {
         tone: getStatusTone('submitted'),
-        label: t('statusSubmitted'),
+        label: t('statusWaitingFirstToken'),
+        detail: streamActivity.startedAt
+          ? t('statusWaitingSeconds', { seconds: secondsSince(nowMs, streamActivity.startedAt) ?? 0 })
+          : undefined,
       };
     }
 
     if (status === 'streaming') {
+      if (latestRunningToolName) {
+        return {
+          tone: getStatusTone('streaming'),
+          label: t('statusToolRunning', { tool: latestRunningToolName }),
+        };
+      }
+
+      if (!streamActivity.hasReceivedToken) {
+        return {
+          tone: getStatusTone('streaming'),
+          label: t('statusWaitingFirstToken'),
+          detail: streamActivity.startedAt
+            ? t('statusWaitingSeconds', { seconds: secondsSince(nowMs, streamActivity.startedAt) ?? 0 })
+            : undefined,
+        };
+      }
+
       return {
         tone: getStatusTone('streaming'),
-        label: latestRunningToolName
-          ? t('statusToolRunning', { tool: latestRunningToolName })
-          : t('statusStreaming'),
+        label: t('statusStreaming'),
+      };
+    }
+
+    const errorKind = latestAssistantMetadata?.errorKind;
+    if (errorKind) {
+      const labelMap: Record<AIChatErrorKind, string> = {
+        output_limit: t('statusOutputLimit'),
+        timeout_total: t('statusTimedOut'),
+        timeout_chunk: t('statusTimedOut'),
+        client_abort: t('statusAborted'),
+        network: t('statusDisconnected'),
+        provider: t('statusProviderError'),
+        tool: t('statusToolError'),
+        stream: t('statusFailed'),
+        unknown: t('statusFailed'),
+      };
+      return {
+        tone: getStatusTone(getErrorKindTone(errorKind)),
+        label: labelMap[errorKind],
+        detail: latestAssistantMetadata?.errorText,
       };
     }
 
@@ -303,8 +385,16 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
     const terminalStatus = lastTerminalStatus || latestAssistantMetadata?.status;
     if (!terminalStatus) return null;
 
+    if (isStaleStreamingMetadata(latestAssistantMetadata, nowMs)) {
+      return {
+        tone: getStatusTone('disconnected'),
+        label: t('statusDisconnected'),
+        detail: t('statusStaleStream'),
+      };
+    }
+
     const labelMap: Record<AIChatStatus, string> = {
-      submitted: t('statusSubmitted'),
+      submitted: t('statusWaitingFirstToken'),
       streaming: t('statusStreaming'),
       completed: t('statusCompleted'),
       error: t('statusFailed'),
@@ -316,7 +406,7 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
       label: labelMap[terminalStatus],
       detail: latestAssistantMetadata?.errorText,
     };
-  }, [chatError, lastTerminalStatus, latestAssistantMetadata, latestRunningToolName, status, t]);
+  }, [chatError, lastTerminalStatus, latestAssistantMetadata, latestRunningToolName, nowMs, status, streamActivity, t]);
 
   // Wrap handleSubmit to update session title on first message
   const handleSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {

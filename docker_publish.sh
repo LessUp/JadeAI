@@ -40,6 +40,12 @@ buildx_args=(
   --build-arg "BUILD_DATE=$BUILD_DATE"
   --build-arg "VCS_REF=$VCS_REF"
 )
+if [ -n "${DEBIAN_MIRROR:-}" ]; then
+  buildx_args+=(--build-arg "DEBIAN_MIRROR=$DEBIAN_MIRROR")
+fi
+if [ -n "${DEBIAN_SECURITY_MIRROR:-}" ]; then
+  buildx_args+=(--build-arg "DEBIAN_SECURITY_MIRROR=$DEBIAN_SECURITY_MIRROR")
+fi
 if [ "$PUSH" = "true" ]; then
   buildx_args+=(--push)
 else
