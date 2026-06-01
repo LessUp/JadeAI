@@ -1,6 +1,6 @@
 import { SQLiteAdapter } from './adapters/sqlite';
 import { PostgreSQLAdapter } from './adapters/postgresql';
-import type { DatabaseAdapter } from './adapter';
+import type { DatabaseAdapter, TransactionCallback } from './adapter';
 import { resolveDatabaseConfig } from './config';
 
 let adapter: DatabaseAdapter;
@@ -23,4 +23,5 @@ const _initPromise = adapter.initialize().catch((e) => {
 export const dbReady = _initPromise;
 
 export const db = adapter.db;
+export const transaction = <T>(callback: TransactionCallback<T>) => adapter.transaction(callback);
 export { adapter };

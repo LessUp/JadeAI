@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from '../schema';
-import type { DatabaseAdapter } from '../adapter';
+import type { DatabaseAdapter, TransactionCallback } from '../adapter';
 import { mkdirSync } from 'fs';
 import { dirname, resolve } from 'path';
 
@@ -71,6 +71,18 @@ export class SQLiteAdapter implements DatabaseAdapter {
       console.error('[DB] SQLite auto-seed failed:', e);
       throw e;
     }
+  }
+
+  async transaction<T>(callback: TransactionCallback<T>): Promise<T> {
+    return this.db.transaction((tx) => {
+      const result = callback(tx);
+
+      if (result && typeof (result as Promise<T>).then === 'function') {
+        throw new Error('SQLite transactions require synchronous callbacks');
+      }
+
+      return result as T;
+    });
   }
 
   async close(): Promise<void> {

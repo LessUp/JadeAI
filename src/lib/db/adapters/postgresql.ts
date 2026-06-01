@@ -2,7 +2,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { sql } from 'drizzle-orm';
 import postgres from 'postgres';
-import type { DatabaseAdapter } from '../adapter';
+import type { DatabaseAdapter, TransactionCallback } from '../adapter';
 import { resolve } from 'path';
 
 function isConcurrentSeedError(error: unknown): boolean {
@@ -62,6 +62,10 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       console.error('[DB] PostgreSQL auto-seed failed:', e);
       throw e;
     }
+  }
+
+  async transaction<T>(callback: TransactionCallback<T>): Promise<T> {
+    return this.db.transaction(async (tx) => callback(tx));
   }
 
   async close(): Promise<void> {

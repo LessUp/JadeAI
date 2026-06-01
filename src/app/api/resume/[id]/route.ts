@@ -58,55 +58,16 @@ export async function PUT(
     const body = await request.json();
     const { title, template, themeConfig, language, sections } = body;
 
-    // Update resume metadata
-    if (title || template || themeConfig || language) {
-      await resumeRepository.update(id, {
+    const updated = await resumeRepository.saveDraft(id, {
+      userId: user.id,
+      metadata: {
         ...(title && { title }),
         ...(template && { template }),
         ...(themeConfig && { themeConfig: mergeThemeConfig(themeConfig) }),
         ...(language && { language }),
-      });
-    }
-
-    // Sync sections: create new, update existing, delete removed
-    if (sections && Array.isArray(sections)) {
-      const existingSections = (resume.sections || []) as ResumeSection[];
-      const incomingSections = sections as IncomingSection[];
-      const existingIds = new Set(existingSections.map((s) => s.id));
-      const incomingIds = new Set(incomingSections.map((s) => s.id));
-
-      // Delete sections that were removed by the user
-      for (const existing of existingSections) {
-        if (!incomingIds.has(existing.id)) {
-          await resumeRepository.deleteSection(existing.id);
-        }
-      }
-
-      for (const section of incomingSections) {
-        if (existingIds.has(section.id)) {
-          // Update existing section
-          await resumeRepository.updateSection(section.id, {
-            title: section.title,
-            sortOrder: section.sortOrder,
-            visible: section.visible,
-            content: section.content,
-          });
-        } else {
-          // Create new section added by the user
-          await resumeRepository.createSection({
-            id: section.id,
-            resumeId: id,
-            type: section.type,
-            title: section.title,
-            sortOrder: section.sortOrder,
-            visible: section.visible,
-            content: section.content,
-          });
-        }
-      }
-    }
-
-    const updated = await resumeRepository.findById(id);
+      },
+      sections: sections && Array.isArray(sections) ? (sections as IncomingSection[]) : undefined,
+    });
     return NextResponse.json(updated);
   } catch (error) {
     console.error('PUT /api/resume/[id] error:', error);

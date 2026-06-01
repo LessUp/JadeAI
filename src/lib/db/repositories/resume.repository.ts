@@ -1,6 +1,81 @@
 import { eq, desc, sql, and } from 'drizzle-orm';
-import { db } from '../index';
+import { db, transaction } from '../index';
 import { resumes, resumeSections } from '../schema';
+
+type MaybePromise<T> = T | Promise<T>;
+
+type ResumeDraftMetadata = Partial<{
+  title: string;
+  template: string;
+  themeConfig: unknown;
+  language: string;
+}>;
+
+export type ResumeDraftSectionInput = {
+  id: string;
+  type: string;
+  title: string;
+  sortOrder: number;
+  visible: boolean;
+  content?: unknown;
+};
+
+export type SaveResumeDraftInput = {
+  userId: string;
+  metadata?: ResumeDraftMetadata;
+  sections?: ResumeDraftSectionInput[];
+};
+
+function isPromiseLike<T>(value: MaybePromise<T>): value is Promise<T> {
+  return !!value && typeof (value as Promise<T>).then === 'function';
+}
+
+function chain<T, U>(value: MaybePromise<T>, next: (value: T) => MaybePromise<U>): MaybePromise<U> {
+  return isPromiseLike(value) ? value.then(next) : next(value);
+}
+
+function sequence<T>(items: T[], run: (item: T) => MaybePromise<unknown>): MaybePromise<void> {
+  let current: MaybePromise<unknown> = undefined;
+  for (const item of items) {
+    current = chain(current, () => run(item));
+  }
+  return chain(current, () => undefined);
+}
+
+function readAll<T = any>(query: any): MaybePromise<T[]> {
+  return typeof query.all === 'function' ? query.all() : query;
+}
+
+function runQuery(query: any): MaybePromise<unknown> {
+  return typeof query.run === 'function' ? query.run() : query;
+}
+
+function compactMetadata(metadata: ResumeDraftMetadata = {}) {
+  return Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== undefined));
+}
+
+function findByIdInExecutor(executor: any, id: string) {
+  return chain(readAll(executor.select().from(resumes).where(eq(resumes.id, id)).limit(1)), (resume: any[]) => {
+    if (!resume[0]) return null;
+    return chain(
+      readAll(executor.select().from(resumeSections).where(eq(resumeSections.resumeId, id)).orderBy(resumeSections.sortOrder)),
+      (sections: any[]) => ({ ...resume[0], sections }),
+    );
+  });
+}
+
+function findByIdForUserInExecutor(executor: any, id: string, userId: string) {
+  return chain(
+    readAll(executor.select().from(resumes).where(and(eq(resumes.id, id), eq(resumes.userId, userId))).limit(1)),
+    (resume: any[]) => {
+      if (!resume[0]) return null;
+      return chain(
+        readAll(executor.select().from(resumeSections).where(eq(resumeSections.resumeId, id)).orderBy(resumeSections.sortOrder)),
+        (sections: any[]) => ({ ...resume[0], sections }),
+      );
+    },
+  );
+}
 
 export const resumeRepository = {
   async findAllByUserId(userId: string) {
@@ -8,25 +83,80 @@ export const resumeRepository = {
   },
 
   async findById(id: string) {
-    const resume = await db.select().from(resumes).where(eq(resumes.id, id)).limit(1);
-    if (!resume[0]) return null;
-    const sections = await db.select().from(resumeSections).where(eq(resumeSections.resumeId, id)).orderBy(resumeSections.sortOrder);
-    return { ...resume[0], sections };
+    return findByIdInExecutor(db, id);
   },
 
   async findByIdForUser(id: string, userId: string) {
-    const resume = await db
-      .select()
-      .from(resumes)
-      .where(and(eq(resumes.id, id), eq(resumes.userId, userId)))
-      .limit(1);
-    if (!resume[0]) return null;
-    const sections = await db
-      .select()
-      .from(resumeSections)
-      .where(eq(resumeSections.resumeId, id))
-      .orderBy(resumeSections.sortOrder);
-    return { ...resume[0], sections };
+    return findByIdForUserInExecutor(db, id, userId);
+  },
+
+  async saveDraft(id: string, data: SaveResumeDraftInput) {
+    return transaction((tx) =>
+      chain(findByIdForUserInExecutor(tx, id, data.userId), (resume: any) => {
+        if (!resume) return null;
+
+        const metadata = compactMetadata(data.metadata);
+        const updateMetadata =
+          Object.keys(metadata).length > 0
+            ? runQuery(
+                tx
+                  .update(resumes)
+                  .set({ ...metadata, updatedAt: new Date() } as any)
+                  .where(and(eq(resumes.id, id), eq(resumes.userId, data.userId))),
+              )
+            : undefined;
+
+        return chain(updateMetadata, () => {
+          if (!data.sections) {
+            return findByIdForUserInExecutor(tx, id, data.userId);
+          }
+
+          const existingSections = resume.sections as { id: string }[];
+          const incomingSections = data.sections;
+          const existingIds = new Set(existingSections.map((section) => section.id));
+          const incomingIds = new Set(incomingSections.map((section) => section.id));
+          const removedSections = existingSections.filter((section) => !incomingIds.has(section.id));
+
+          return chain(
+            sequence(removedSections, (section) =>
+              runQuery(tx.delete(resumeSections).where(and(eq(resumeSections.id, section.id), eq(resumeSections.resumeId, id)))),
+            ),
+            () =>
+              chain(
+                sequence(incomingSections, (section) => {
+                  if (existingIds.has(section.id)) {
+                    return runQuery(
+                      tx
+                        .update(resumeSections)
+                        .set({
+                          title: section.title,
+                          sortOrder: section.sortOrder,
+                          visible: section.visible,
+                          content: section.content,
+                          updatedAt: new Date(),
+                        } as any)
+                        .where(and(eq(resumeSections.id, section.id), eq(resumeSections.resumeId, id))),
+                    );
+                  }
+
+                  return runQuery(
+                    tx.insert(resumeSections).values({
+                      id: section.id,
+                      resumeId: id,
+                      type: section.type,
+                      title: section.title,
+                      sortOrder: section.sortOrder,
+                      visible: section.visible,
+                      content: section.content || {},
+                    } as any),
+                  );
+                }),
+                () => findByIdForUserInExecutor(tx, id, data.userId),
+              ),
+          );
+        });
+      }),
+    );
   },
 
   async create(data: { userId: string; title?: string; template?: string; language?: string }) {
