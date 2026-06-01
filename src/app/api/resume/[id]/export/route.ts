@@ -3,6 +3,7 @@ import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
 import { generatePdf } from '@/lib/pdf/generate-pdf';
 import { generateHtml, generatePdfHtml } from './builders';
+import { buildExportContentDisposition } from './content-disposition';
 import { generatePlainText } from './plain-text';
 import { generateDocxBuffer } from './docx';
 
@@ -47,7 +48,7 @@ export async function GET(
           status: 200,
           headers: {
             'Content-Type': 'text/html; charset=utf-8',
-            'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}.html"`,
+            'Content-Disposition': buildExportContentDisposition(filename, 'html'),
           },
         });
       }
@@ -57,7 +58,7 @@ export async function GET(
           status: 200,
           headers: {
             'Content-Type': 'text/plain; charset=utf-8',
-            'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}.txt"`,
+            'Content-Disposition': buildExportContentDisposition(filename, 'txt'),
           },
         });
       }
@@ -67,7 +68,7 @@ export async function GET(
           status: 200,
           headers: {
             'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}.docx"`,
+            'Content-Disposition': buildExportContentDisposition(filename, 'docx'),
           },
         });
       }
@@ -79,7 +80,7 @@ export async function GET(
           status: 200,
           headers: {
             'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}.pdf"`,
+            'Content-Disposition': buildExportContentDisposition(filename, 'pdf'),
           },
         });
       }
