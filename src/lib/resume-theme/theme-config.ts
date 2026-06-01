@@ -20,6 +20,9 @@ const GENERIC_FAMILIES = new Set([
 const FORBIDDEN_FONT_STACK_PATTERN = /[;{}]|\/\*|\*\/|url\s*\(|@import|[\r\n\\'"]/i;
 
 type MarginSide = keyof ThemeConfig['margin'];
+export type ThemeConfigInput = Partial<Omit<ThemeConfig, 'margin'>> & {
+  margin?: Partial<ThemeConfig['margin']>;
+};
 
 function normalizeHexColor(value: unknown, fallback: string): string {
   if (typeof value !== 'string') return fallback;
@@ -71,7 +74,7 @@ export function normalizeFontStack(value: unknown): string {
   return parts.join(', ');
 }
 
-export function normalizeThemeConfig(theme?: Partial<ThemeConfig> | null): ThemeConfig {
+export function normalizeThemeConfig(theme?: ThemeConfigInput | null): ThemeConfig {
   const source = theme || {};
   const marginSource: Partial<ThemeConfig['margin']> = source.margin || {};
 
@@ -99,7 +102,7 @@ export function normalizeThemeConfig(theme?: Partial<ThemeConfig> | null): Theme
   };
 }
 
-export function mergeThemeConfig(theme?: Partial<ThemeConfig> | null): ThemeConfig {
+export function mergeThemeConfig(theme?: ThemeConfigInput | null): ThemeConfig {
   return normalizeThemeConfig({
     ...DEFAULT_THEME,
     ...theme,

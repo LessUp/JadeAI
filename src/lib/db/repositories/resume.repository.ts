@@ -1,6 +1,15 @@
 import { eq, desc, sql, and } from 'drizzle-orm';
 import { db, transaction } from '../index';
 import { resumes, resumeSections } from '../schema';
+import { mergeThemeConfig, type ThemeConfigInput } from '@/lib/resume-theme/theme-config';
+
+type CreateResumeData = {
+  userId: string;
+  title?: string;
+  template?: string;
+  language?: string;
+  themeConfig?: ThemeConfigInput | null;
+};
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -159,7 +168,7 @@ export const resumeRepository = {
     );
   },
 
-  async create(data: { userId: string; title?: string; template?: string; language?: string }) {
+  async create(data: CreateResumeData) {
     const id = crypto.randomUUID();
     await db.insert(resumes).values({
       id,
@@ -167,6 +176,7 @@ export const resumeRepository = {
       title: data.title || '未命名简历',
       template: data.template || 'classic',
       language: data.language || 'zh',
+      ...(data.themeConfig ? { themeConfig: mergeThemeConfig(data.themeConfig) } : {}),
     });
     return this.findById(id);
   },
