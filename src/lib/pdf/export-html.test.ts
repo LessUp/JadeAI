@@ -164,7 +164,32 @@ test('PDF export HTML emits absolute font URLs when a font base URL is provided'
     html,
     new RegExp(`${TEST_FONT_BASE_URL}/fonts/custom/resource-han-rounded-cn/ResourceHanRoundedCN-Regular\\.ttf`),
   );
-  assert.match(html, /font-family: "Resource Han Rounded CN", "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif !important/);
+  assert.match(html, /--theme-font-family: "Resource Han Rounded CN", "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;/);
+  assert.match(html, /font-family: var\(--theme-font-family, "Resource Han Rounded CN", "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif\) !important/);
+});
+
+test('PDF export theme CSS uses template-safe variables instead of broad descendant overrides', async () => {
+  const resume = getPdfRegressionFixture('modern-long-content');
+  resume.themeConfig = {
+    ...resume.themeConfig,
+    primaryColor: '#123456',
+    accentColor: '#f59e0b',
+    fontSize: 'large',
+    lineSpacing: 1.7,
+  };
+
+  const html = await generatePdfHtml(resume as any, TEST_FONT_BASE_URL);
+
+  assert.match(html, /--theme-primary-color: #123456;/);
+  assert.match(html, /--theme-accent-color: #f59e0b;/);
+  assert.match(html, /--text-sm: var\(--base-body-size\);/);
+  assert.match(html, /--font-sans: var\(--theme-font-family\);/);
+  assert.doesNotMatch(html, /\.resume-export,\s*\.resume-export \*/);
+  assert.doesNotMatch(
+    html,
+    /\.resume-export p,\s*\.resume-export li,\s*\.resume-export span,\s*\.resume-export td,\s*\.resume-export a,\s*\.resume-export div/,
+  );
+  assert.doesNotMatch(html, /\[class\*="bg-blue-"\]/);
 });
 
 test('PDF export HTML is deterministic for representative long-content templates', async (t) => {
