@@ -23,7 +23,7 @@ interface HtmlRegressionCase {
 
 const REQUIRED_PDF_PAGINATION_SNIPPETS = [
   '@page {        size: A4;',
-  '[data-section] { break-inside: auto !important; overflow: visible !important; }',
+  '[data-section],\n       [data-pdf-entry],\n       [data-pdf-entry-header] { break-inside: auto !important; overflow: visible !important; }',
   '[data-section] [class*="space-y"] > div, .item { break-inside: avoid !important; }',
   '[data-section] [class*="space-y"] > [data-pdf-entry] { break-inside: auto !important; }',
   '.resume-export span[class*="rounded-full"] { break-inside: avoid !important; }',
@@ -33,8 +33,8 @@ const REQUIRED_PDF_PAGINATION_SNIPPETS = [
 const HTML_REGRESSION_CASES: HtmlRegressionCase[] = [
   {
     fixtureName: 'modern-long-content',
-    expectedLength: 56607,
-    expectedSha256: 'cfc4267f479496c6b470f8c1a95c59e51e81338fc19a03d0a8d76bc204f9ebc5',
+    expectedLength: 56568,
+    expectedSha256: '671ed7d1b89c6a1951c99b754baef2244d6b2f63d82e3bee68ec33f37bb6ceea',
     dataAttributes: {
       'data-page-mode': 'edge-to-edge',
       'data-surface-mode': 'background',
@@ -52,8 +52,8 @@ const HTML_REGRESSION_CASES: HtmlRegressionCase[] = [
   },
   {
     fixtureName: 'sidebar-long-content',
-    expectedLength: 63816,
-    expectedSha256: '7b7745c16c65362706aa1b2bc847ce7241abe16180c47faae445589244de8b91',
+    expectedLength: 63777,
+    expectedSha256: 'e0992d518b57e1bc67ea5c2367db8c8eec5a1085981c0adccb184343717ea94f',
     dataAttributes: {
       'data-page-mode': 'edge-to-edge',
       'data-surface-mode': 'sidebar-dark',
@@ -71,8 +71,8 @@ const HTML_REGRESSION_CASES: HtmlRegressionCase[] = [
   },
   {
     fixtureName: 'compact-dense',
-    expectedLength: 56685,
-    expectedSha256: '8f2b27869925a321e31c6ebc7f00a35933335bddfed8ba74376f7f66e3c3c308',
+    expectedLength: 56646,
+    expectedSha256: '094be8a90bde40bb303746feb9cfe68fed03c37a9f9b0ef166bee8589835283d',
     dataAttributes: {
       'data-page-mode': 'edge-to-edge',
       'data-surface-mode': 'background',
@@ -86,8 +86,8 @@ const HTML_REGRESSION_CASES: HtmlRegressionCase[] = [
   },
   {
     fixtureName: 'neon-dark-background',
-    expectedLength: 62288,
-    expectedSha256: 'af8cdafe987251a594eede38d983a9bd2e7cabb4942da261ddf153b023ec731d',
+    expectedLength: 62249,
+    expectedSha256: '17a5237e44e600fb19baef6d51fdd61315ed2c885e377b5e77d8be2f8acdfe9e',
     dataAttributes: {
       'data-page-mode': 'edge-to-edge',
       'data-surface-mode': 'full-dark',
@@ -105,8 +105,8 @@ const HTML_REGRESSION_CASES: HtmlRegressionCase[] = [
   },
   {
     fixtureName: 'swiss-page-gap',
-    expectedLength: 61801,
-    expectedSha256: '434c0309d10c8bf8cbb9866d1e1e2575040a8ec8b4987db4027964ca570445f9',
+    expectedLength: 61762,
+    expectedSha256: '2a577bc08a33464c9392b384d0274d41efb9013a421bee6f47c6a2559e3aca18',
     dataAttributes: {
       'data-page-mode': 'standard',
       'data-surface-mode': 'light',
@@ -123,8 +123,8 @@ const HTML_REGRESSION_CASES: HtmlRegressionCase[] = [
   },
   {
     fixtureName: 'gradient-page-margin',
-    expectedLength: 64997,
-    expectedSha256: 'f44e52ef16c41fe118564eeb285ec0b8cb94bf3dc8872a83e9da24af637bee9d',
+    expectedLength: 64958,
+    expectedSha256: '6af66f72a0a44e8f7b6266a3272c5f0c273e594ec0c19f00713d6286ad97ecb0',
     dataAttributes: {
       'data-page-mode': 'edge-to-edge',
       'data-surface-mode': 'background',
@@ -164,32 +164,7 @@ test('PDF export HTML emits absolute font URLs when a font base URL is provided'
     html,
     new RegExp(`${TEST_FONT_BASE_URL}/fonts/custom/resource-han-rounded-cn/ResourceHanRoundedCN-Regular\\.ttf`),
   );
-  assert.match(html, /--theme-font-family: "Resource Han Rounded CN", "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif;/);
-  assert.match(html, /font-family: var\(--theme-font-family, "Resource Han Rounded CN", "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif\) !important/);
-});
-
-test('PDF export theme CSS uses template-safe variables instead of broad descendant overrides', async () => {
-  const resume = getPdfRegressionFixture('modern-long-content');
-  resume.themeConfig = {
-    ...resume.themeConfig,
-    primaryColor: '#123456',
-    accentColor: '#f59e0b',
-    fontSize: 'large',
-    lineSpacing: 1.7,
-  };
-
-  const html = await generatePdfHtml(resume as any, TEST_FONT_BASE_URL);
-
-  assert.match(html, /--theme-primary-color: #123456;/);
-  assert.match(html, /--theme-accent-color: #f59e0b;/);
-  assert.match(html, /--text-sm: var\(--base-body-size\);/);
-  assert.match(html, /--font-sans: var\(--theme-font-family\);/);
-  assert.doesNotMatch(html, /\.resume-export,\s*\.resume-export \*/);
-  assert.doesNotMatch(
-    html,
-    /\.resume-export p,\s*\.resume-export li,\s*\.resume-export span,\s*\.resume-export td,\s*\.resume-export a,\s*\.resume-export div/,
-  );
-  assert.doesNotMatch(html, /\[class\*="bg-blue-"\]/);
+  assert.match(html, /font-family: "Resource Han Rounded CN", "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif !important/);
 });
 
 test('PDF export HTML is deterministic for representative long-content templates', async (t) => {

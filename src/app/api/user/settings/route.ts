@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
+import { resolveCurrentUser } from '@/lib/auth/helpers';
 import { userRepository } from '@/lib/db/repositories/user.repository';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const fingerprint = getUserIdFromRequest(request);
-    const user = await resolveUser(fingerprint);
-    if (!user) {
+    const currentUser = await resolveCurrentUser({ request });
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const settings = await userRepository.getSettings(user.id);
+    const settings = await userRepository.getSettings(currentUser.user.id);
     return NextResponse.json(settings);
   } catch (error) {
     console.error('GET /api/user/settings error:', error);
@@ -21,9 +20,8 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const fingerprint = getUserIdFromRequest(request);
-    const user = await resolveUser(fingerprint);
-    if (!user) {
+    const currentUser = await resolveCurrentUser({ request });
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -38,7 +36,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    const settings = await userRepository.updateSettings(user.id, filtered);
+    const settings = await userRepository.updateSettings(currentUser.user.id, filtered);
     return NextResponse.json(settings);
   } catch (error) {
     console.error('PUT /api/user/settings error:', error);

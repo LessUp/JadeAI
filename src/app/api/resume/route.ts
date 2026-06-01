@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
-import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
+import { resolveCurrentUser } from '@/lib/auth/helpers';
 import { DEFAULT_SECTIONS } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const fingerprint = getUserIdFromRequest(request);
-    const user = await resolveUser(fingerprint);
-    if (!user) {
+    const currentUser = await resolveCurrentUser({ request });
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const resumes = await resumeRepository.findAllByUserId(user.id);
+    const resumes = await resumeRepository.findAllByUserId(currentUser.user.id);
     return NextResponse.json(resumes);
   } catch (error) {
     console.error('GET /api/resume error:', error);
@@ -23,9 +22,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const fingerprint = getUserIdFromRequest(request);
-    const user = await resolveUser(fingerprint);
-    if (!user) {
+    const currentUser = await resolveCurrentUser({ request });
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -33,7 +31,7 @@ export async function POST(request: NextRequest) {
     const { title, template, language, sections, themeConfig } = body;
 
     const resume = await resumeRepository.create({
-      userId: user.id,
+      userId: currentUser.user.id,
       title: title || '未命名简历',
       template: template || 'classic',
       language: language || 'zh',

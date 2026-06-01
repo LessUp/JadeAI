@@ -16,6 +16,12 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "off",
     },
   },
+  {
+    files: ["src/components/preview/templates/**/*.tsx"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
@@ -23,6 +29,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    ".worktrees/**",
   ]),
 ]);
 

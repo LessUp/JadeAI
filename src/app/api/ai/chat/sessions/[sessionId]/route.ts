@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
+import { resolveCurrentUser } from '@/lib/auth/helpers';
 import { chatRepository } from '@/lib/db/repositories/chat.repository';
 
 export const dynamic = 'force-dynamic';
@@ -9,9 +9,8 @@ export async function GET(
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
-    const fingerprint = getUserIdFromRequest(request);
-    const user = await resolveUser(fingerprint);
-    if (!user) return new Response('Unauthorized', { status: 401 });
+    const currentUser = await resolveCurrentUser({ request });
+    if (!currentUser) return new Response('Unauthorized', { status: 401 });
 
     const { sessionId } = await params;
 
@@ -19,10 +18,10 @@ export async function GET(
     const limitParam = request.nextUrl.searchParams.get('limit');
     const limit = limitParam ? Math.min(parseInt(limitParam, 10) || 20, 50) : 20;
 
-    const session = await chatRepository.findSessionForUser(sessionId, user.id);
+    const session = await chatRepository.findSessionForUser(sessionId, currentUser.user.id);
     if (!session) return new Response('Not found', { status: 404 });
 
-    const paginated = await chatRepository.findPaginatedMessagesForUser(sessionId, user.id, { cursor, limit });
+    const paginated = await chatRepository.findPaginatedMessagesForUser(sessionId, currentUser.user.id, { cursor, limit });
     if (!paginated) return new Response('Not found', { status: 404 });
     const { messages, hasMore, nextCursor } = paginated;
 
@@ -38,12 +37,11 @@ export async function DELETE(
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
-    const fingerprint = getUserIdFromRequest(request);
-    const user = await resolveUser(fingerprint);
-    if (!user) return new Response('Unauthorized', { status: 401 });
+    const currentUser = await resolveCurrentUser({ request });
+    if (!currentUser) return new Response('Unauthorized', { status: 401 });
 
     const { sessionId } = await params;
-    const deleted = await chatRepository.deleteSessionForUser(sessionId, user.id);
+    const deleted = await chatRepository.deleteSessionForUser(sessionId, currentUser.user.id);
     if (!deleted) return new Response('Not found', { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {

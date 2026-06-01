@@ -12,7 +12,28 @@ export interface AIConfig {
   model: string;
 }
 
+interface AIRequestHeadersLike {
+  get(name: string): string | null;
+}
+
+interface AIConfigRequestLike {
+  headers: AIRequestHeadersLike;
+}
+
+function isNextRequestLike(request: unknown): request is AIConfigRequestLike {
+  return Boolean(
+    request
+    && typeof request === 'object'
+    && 'headers' in request
+    && request.headers
+    && typeof (request as AIConfigRequestLike).headers.get === 'function'
+  );
+}
+
 export function extractAIConfig(request: NextRequest): AIConfig {
+  if (!isNextRequestLike(request)) {
+    throw new AIConfigError('Invalid AI request context.');
+  }
   const requestedProvider = normalizeAIProvider(request.headers.get('x-provider'));
   const serverConfig = getServerAIConfig(requestedProvider);
   const suppliedApiKey = request.headers.get('x-api-key')?.trim() || '';

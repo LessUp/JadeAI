@@ -7,6 +7,7 @@ import { translateInputSchema } from '@/lib/ai/translate-schema';
 import { extractJson } from '@/lib/ai/extract-json';
 import type { ResumeSection } from '@/types/resume';
 import { z } from 'zod/v4';
+import { normalizeResumeSectionContent } from '@/lib/resume-section/schema';
 
 const LANGUAGE_NAMES: Record<string, string> = {
   zh: 'Simplified Chinese',
@@ -177,6 +178,9 @@ export async function POST(request: NextRequest) {
         content,
       };
     });
+    const sectionTypesById = new Map<string, string>(
+      sectionsData.map((section: { sectionId: string; type: string }) => [section.sectionId, section.type])
+    );
 
     const aiConfig = extractAIConfig(request);
     const model = getModel(aiConfig);
@@ -209,12 +213,18 @@ export async function POST(request: NextRequest) {
                 ? { ...translated.content, ...saved }
                 : translated.content;
 
+              const sectionType = sectionTypesById.get(translated.sectionId);
+              if (!sectionType) {
+                throw new Error(`Section not found in translation target set: ${translated.sectionId}`);
+              }
+              const normalizedContent = normalizeResumeSectionContent(sectionType, content as unknown);
+
               await resumeRepository.updateSection(translated.sectionId, {
                 title: translated.title,
-                content,
+                content: normalizedContent,
               });
 
-              return { ...translated, content };
+              return { ...translated, content: normalizedContent };
             },
             (_index, result) => {
               completed++;

@@ -26,7 +26,12 @@ interface SectionWrapperProps {
   onRemove: () => void;
 }
 
-const sectionComponents: Record<string, React.ComponentType<{ section: ResumeSection; onUpdate: (content: any) => void }>> = {
+type SectionComponentProps = {
+  section: ResumeSection;
+  onUpdate: (content: Partial<SectionContent>) => void;
+};
+
+const sectionComponents: Record<string, React.ComponentType<SectionComponentProps>> = {
   personal_info: PersonalInfoSection,
   summary: SummarySection,
   work_experience: WorkExperienceSection,

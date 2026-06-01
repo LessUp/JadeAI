@@ -6,6 +6,8 @@ import { generateShareToken, getShareUrl, hashPassword } from '@/lib/utils/share
 
 export const dynamic = 'force-dynamic';
 
+type ResumeShareRecord = Awaited<ReturnType<typeof shareRepository.findByResumeId>>[number];
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -27,7 +29,7 @@ export async function GET(
     }
 
     const shares = await shareRepository.findByResumeId(id);
-    const sharesWithUrl = shares.map((s: any) => ({
+    const sharesWithUrl = shares.map((s: ResumeShareRecord) => ({
       ...s,
       shareUrl: getShareUrl(s.token, request),
       hasPassword: !!s.password,

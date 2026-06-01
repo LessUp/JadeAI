@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
-import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
+import { resolveCurrentUser } from '@/lib/auth/helpers';
 import { generatePdf } from '@/lib/pdf/generate-pdf';
 import { generateHtml, generatePdfHtml } from './builders';
 import { buildExportContentDisposition } from './content-disposition';
@@ -18,9 +18,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const fingerprint = getUserIdFromRequest(request);
-    const user = await resolveUser(fingerprint);
-    if (!user) {
+    const currentUser = await resolveCurrentUser({ request });
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -28,7 +27,7 @@ export async function GET(
     if (!resume) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
-    if (resume.userId !== user.id) {
+    if (resume.userId !== currentUser.user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

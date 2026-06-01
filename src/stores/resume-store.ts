@@ -4,9 +4,15 @@ import type { Resume, ResumeSection, SectionContent } from '@/types/resume';
 import type { ResumeVersionSource } from '@/types/editor';
 import { AUTOSAVE_DELAY } from '@/lib/constants';
 import { generateId } from '@/lib/utils';
-import { createResumeDraftSnapshot } from '@/lib/editor/resume-draft';
+import {
+  areResumeDraftSnapshotsEqual,
+  createResumeDraftSnapshot,
+} from '@/lib/editor/resume-draft';
 import { saveResumeVersion } from '@/lib/editor/resume-version-history';
-import { getLocalVersionHistoryFailureCopy } from '@/lib/editor/resume-version-history-status';
+import {
+  getAutoSaveFailureCopy,
+  getLocalVersionHistoryFailureCopy,
+} from '@/lib/editor/resume-version-history-status';
 import { useEditorStore } from '@/stores/editor-store';
 import { useSettingsStore } from '@/stores/settings-store';
 
@@ -37,6 +43,7 @@ function pushUndoSnapshot(resume: Resume | null) {
 }
 
 let hasWarnedAboutLocalVersionHistoryFailure = false;
+let hasWarnedAboutAutoSaveFailure = false;
 
 function handleLocalVersionHistoryFailure(error: unknown) {
   console.error('Failed to save local resume version:', error);
@@ -48,6 +55,87 @@ function handleLocalVersionHistoryFailure(error: unknown) {
   hasWarnedAboutLocalVersionHistoryFailure = true;
   const copy = getLocalVersionHistoryFailureCopy(navigator.language);
   toast.warning(copy.title, { description: copy.description });
+}
+
+function handleAutoSaveFailure(error: unknown) {
+  console.error('Failed to auto-save resume:', error);
+
+  if (typeof window === 'undefined' || hasWarnedAboutAutoSaveFailure) {
+    return;
+  }
+
+  hasWarnedAboutAutoSaveFailure = true;
+  const copy = getAutoSaveFailureCopy(navigator.language);
+  toast.error(copy.title, { description: copy.description });
+}
+
+function parseDateInput(value: unknown, fallback: Date): Date {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value;
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+
+  return fallback;
+}
+
+function normalizeServerResume(
+  raw: unknown,
+  fallbackResume: Resume,
+  fallbackSections: ResumeSection[]
+): Resume | null {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+
+  const value = raw as Partial<Resume> & { sections?: unknown };
+  const sectionSource = Array.isArray(value.sections) ? value.sections : fallbackSections;
+
+  const sections = sectionSource.map((sectionLike, index) => {
+    const section = sectionLike as Partial<ResumeSection>;
+    const now = new Date();
+    return {
+      id: typeof section.id === 'string' && section.id ? section.id : generateId(),
+      resumeId:
+        typeof section.resumeId === 'string' && section.resumeId
+          ? section.resumeId
+          : fallbackResume.id,
+      type: typeof section.type === 'string' && section.type ? section.type : 'custom',
+      title: typeof section.title === 'string' ? section.title : '',
+      sortOrder:
+        typeof section.sortOrder === 'number' && Number.isFinite(section.sortOrder)
+          ? section.sortOrder
+          : index,
+      visible: section.visible !== false,
+      content: (section.content ?? {}) as SectionContent,
+      createdAt: parseDateInput(section.createdAt, now),
+      updatedAt: parseDateInput(section.updatedAt, now),
+    } satisfies ResumeSection;
+  });
+
+  return {
+    id: typeof value.id === 'string' && value.id ? value.id : fallbackResume.id,
+    userId:
+      typeof value.userId === 'string' && value.userId
+        ? value.userId
+        : fallbackResume.userId,
+    title: typeof value.title === 'string' ? value.title : fallbackResume.title,
+    template:
+      typeof value.template === 'string' ? value.template : fallbackResume.template,
+    themeConfig: (value.themeConfig ?? fallbackResume.themeConfig) as Resume['themeConfig'],
+    isDefault:
+      typeof value.isDefault === 'boolean' ? value.isDefault : fallbackResume.isDefault,
+    language:
+      typeof value.language === 'string' ? value.language : fallbackResume.language,
+    sections,
+    createdAt: parseDateInput(value.createdAt, fallbackResume.createdAt),
+    updatedAt: parseDateInput(value.updatedAt, fallbackResume.updatedAt),
+  };
 }
 
 export const useResumeStore = create<ResumeStore>((set, get) => ({
@@ -205,6 +293,10 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
     const { currentResume, sections, isDirty, isSaving } = get();
     const source = options?.source ?? 'manual';
     if (!currentResume || isSaving) return;
+    const requestedDraftSnapshot = createResumeDraftSnapshot({
+      ...currentResume,
+      sections,
+    });
 
     if (!isDirty) {
       if (!options?.forceVersion) return;
@@ -265,15 +357,65 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
         );
       }
 
-      set({ isDirty: false });
+      const persistedPayload = await response.json().catch(() => null);
+      const persistedResume = normalizeServerResume(
+        persistedPayload,
+        currentResume,
+        sections
+      );
+      const latestState = get();
+      const latestDraftSnapshot = latestState.currentResume
+        ? createResumeDraftSnapshot({
+          ...latestState.currentResume,
+          sections: latestState.sections,
+        })
+        : null;
+      const unchangedSinceRequest =
+        latestDraftSnapshot !== null &&
+        areResumeDraftSnapshotsEqual(latestDraftSnapshot, requestedDraftSnapshot);
+
+      hasWarnedAboutAutoSaveFailure = false;
+      if (unchangedSinceRequest) {
+        if (persistedResume) {
+          get().setResume(persistedResume);
+        } else {
+          set({ isDirty: false });
+        }
+      } else {
+        set((state) => {
+          if (!state.currentResume) {
+            return { isDirty: true };
+          }
+          return {
+            currentResume: persistedResume
+              ? {
+                ...state.currentResume,
+                updatedAt: persistedResume.updatedAt,
+              }
+              : state.currentResume,
+            isDirty: true,
+          };
+        });
+        get()._scheduleSave();
+      }
+
+      const snapshotForVersion = unchangedSinceRequest
+        ? (() => {
+          const syncedState = get();
+          if (!syncedState.currentResume) {
+            return requestedDraftSnapshot;
+          }
+          return createResumeDraftSnapshot({
+            ...syncedState.currentResume,
+            sections: syncedState.sections,
+          });
+        })()
+        : requestedDraftSnapshot;
 
       try {
         await saveResumeVersion({
           resumeId: currentResume.id,
-          snapshot: createResumeDraftSnapshot({
-            ...currentResume,
-            sections,
-          }),
+          snapshot: snapshotForVersion,
           source,
         });
       } catch (error) {
@@ -299,7 +441,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
     const delay = _hydrated ? autoSaveInterval : AUTOSAVE_DELAY;
     const timeout = setTimeout(() => {
       void get().save({ source: 'autosave' }).catch((error) => {
-        console.error('Failed to auto-save resume:', error);
+        handleAutoSaveFailure(error);
       });
     }, delay);
 

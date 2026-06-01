@@ -148,11 +148,14 @@ export function getFingerprintIdentityFromRequest(
     readCookieValue(request, ANONYMOUS_SESSION_COOKIE),
     options.secret
   );
+  const headerFingerprint = normalizeFingerprint(request.headers.get(FINGERPRINT_HEADER));
   if (cookieFingerprint) {
+    if (headerFingerprint && headerFingerprint !== cookieFingerprint) {
+      return null;
+    }
     return { type: 'fingerprint', source: 'cookie', fingerprint: cookieFingerprint };
   }
 
-  const headerFingerprint = normalizeFingerprint(request.headers.get(FINGERPRINT_HEADER));
   if (!headerFingerprint) return null;
 
   return { type: 'fingerprint', source: 'header', fingerprint: headerFingerprint };

@@ -131,12 +131,11 @@ export function resolveDocxFonts(fontFamily?: string): { west: string; east: str
   const families = splitFontFamilyStack(fontFamily).filter(
     (family) => !GENERIC_FAMILIES.has(family.toLowerCase())
   );
+  const isEastAsianFamily = (family: string) =>
+    /Han|Noto Sans SC|YaHei|HarmonyOS|GenSen|Source Han|Rounded CN|PingFang|Hei|Song|Kai|Fang/i.test(family);
 
-  const west = families[0] || 'Calibri';
-  const east =
-    families.find((family) =>
-      /Han|Noto Sans SC|YaHei|HarmonyOS|GenSen|Source Han|Rounded CN/i.test(family)
-    ) || 'Microsoft YaHei';
+  const west = families.find((family) => !isEastAsianFamily(family)) || families[0] || 'Calibri';
+  const east = families.find((family) => isEastAsianFamily(family)) || families[0] || 'Microsoft YaHei';
 
   return { west, east };
 }

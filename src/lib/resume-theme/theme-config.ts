@@ -68,8 +68,10 @@ export function normalizeFontStack(value: unknown): string {
   if (typeof value !== 'string') return fallback;
 
   const resolved = resolveFontStack(value);
-  const parts = splitFontStack(resolved).map(normalizeFontFamilyPart);
-  if (parts.length === 0 || parts.some((part) => part === null)) return fallback;
+  const parts = splitFontStack(resolved)
+    .map(normalizeFontFamilyPart)
+    .filter((part): part is string => part !== null);
+  if (parts.length === 0) return fallback;
 
   return parts.join(', ');
 }

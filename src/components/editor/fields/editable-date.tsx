@@ -13,6 +13,8 @@ interface EditableDateProps {
 }
 
 const MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'] as const;
+type MonthKey = typeof MONTHS[number];
+type MonthMessageKey = `months.${MonthKey}`;
 
 export function EditableDate({ label, value, onChange }: EditableDateProps) {
   const t = useTranslations('editor.fields');
@@ -30,7 +32,10 @@ export function EditableDate({ label, value, onChange }: EditableDateProps) {
 
   const displayText = useMemo(() => {
     if (!selectedYear || !selectedMonth) return '';
-    return t('dateDisplay', { year: selectedYear, month: t(`months.${selectedMonth}` as any) });
+    return t('dateDisplay', {
+      year: selectedYear,
+      month: t(`months.${selectedMonth as MonthKey}` as MonthMessageKey),
+    });
   }, [selectedYear, selectedMonth, t]);
 
   const handleMonthClick = (month: string) => {
@@ -104,7 +109,7 @@ export function EditableDate({ label, value, onChange }: EditableDateProps) {
                     }`}
                     onClick={() => handleMonthClick(m)}
                   >
-                    {t(`months.${m}` as any)}
+                    {t(`months.${m}` as MonthMessageKey)}
                   </Button>
                 );
               })}

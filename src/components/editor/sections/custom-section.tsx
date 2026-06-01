@@ -22,16 +22,16 @@ export function CustomSection({ section, onUpdate }: Props) {
 
   const addItem = () => {
     const newItem: CustomItem = { id: generateId(), title: '', description: '' };
-    onUpdate({ items: [...items, newItem] } as any);
+    onUpdate({ items: [...items, newItem] });
   };
 
   const updateItem = (index: number, data: Partial<CustomItem>) => {
     const updated = items.map((item, i) => (i === index ? { ...item, ...data } : item));
-    onUpdate({ items: updated } as any);
+    onUpdate({ items: updated });
   };
 
   const removeItem = (index: number) => {
-    onUpdate({ items: items.filter((_, i) => i !== index) } as any);
+    onUpdate({ items: items.filter((_, i) => i !== index) });
   };
 
   return (

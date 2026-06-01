@@ -2,6 +2,7 @@
 
 import { useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import NextImage from 'next/image';
 import { Camera, X, Circle, RectangleVertical } from 'lucide-react';
 import { EditableText } from '../fields/editable-text';
 import { EditableSelect } from '../fields/editable-select';
@@ -82,7 +83,14 @@ export function PersonalInfoSection({ section, onUpdate }: Props) {
           className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-zinc-300 bg-zinc-50 transition-colors hover:border-zinc-400 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:border-zinc-500 dark:hover:bg-zinc-700"
         >
           {content.avatar ? (
-            <img src={content.avatar} alt="Avatar" className="h-full w-full object-cover" />
+            <NextImage
+              src={content.avatar}
+              alt="Avatar"
+              width={80}
+              height={80}
+              unoptimized
+              className="h-full w-full object-cover"
+            />
           ) : (
             <Camera className="h-6 w-6 text-zinc-400" />
           )}

@@ -111,9 +111,10 @@ export function ExportDialog({ open, onOpenChange, resumeId }: ExportDialogProps
 
       setState('success');
       setTimeout(() => onOpenChange(false), 1500);
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : t('error');
       setState('error');
-      setErrorMessage(err.message || t('error'));
+      setErrorMessage(message);
     }
   }, [resumeId, selectedFormat, currentResume, isDirty, save, onOpenChange, t]);
 

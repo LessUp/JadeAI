@@ -54,6 +54,8 @@ interface JdAnalysisDialogProps {
   resumeId: string;
 }
 
+type JdAnalysisT = ReturnType<typeof useTranslations>;
+
 function getScoreColor(score: number): string {
   if (score < 40) return 'text-red-500';
   if (score <= 70) return 'text-yellow-500';
@@ -124,7 +126,15 @@ function formatDate(value: string | number): string {
 }
 
 /* ── Result view (shared between new analysis & history detail) ── */
-function JdAnalysisResultView({ result, jobDescription, t }: { result: JdAnalysisResult; jobDescription?: string; t: any }) {
+function JdAnalysisResultView({
+  result,
+  jobDescription,
+  t,
+}: {
+  result: JdAnalysisResult;
+  jobDescription?: string;
+  t: JdAnalysisT;
+}) {
   const [jdExpanded, setJdExpanded] = useState(false);
 
   return (
@@ -332,8 +342,9 @@ export function JdAnalysisDialog({ open, onOpenChange, resumeId }: JdAnalysisDia
       setResult(data);
       // Refresh history count
       fetchHistory();
-    } catch (err: any) {
-      setError(err.message || 'Failed to analyze');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to analyze';
+      setError(message);
     } finally {
       setIsAnalyzing(false);
     }

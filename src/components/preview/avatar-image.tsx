@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 interface AvatarImageProps {
   src: string;
   avatarStyle?: 'circle' | 'oneInch';
@@ -23,9 +25,12 @@ export function AvatarImage({
   const borderRadius = isCircle ? '9999px' : '4px';
 
   const imgEl = (
-    <img
+    <Image
       src={src}
       alt=""
+      width={width}
+      height={height}
+      unoptimized
       className={className}
       style={{
         width,

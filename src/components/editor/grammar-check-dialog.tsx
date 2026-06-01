@@ -57,6 +57,8 @@ interface GrammarCheckDialogProps {
   resumeId: string;
 }
 
+type GrammarCheckT = ReturnType<typeof useTranslations<'grammarCheck'>>;
+
 function getScoreColor(score: number): string {
   if (score < 40) return 'text-red-500';
   if (score <= 70) return 'text-yellow-500';
@@ -126,7 +128,7 @@ function formatDate(value: string | number): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function SeverityBadge({ severity, t }: { severity: GrammarIssue['severity']; t: any }) {
+function SeverityBadge({ severity, t }: { severity: GrammarIssue['severity']; t: GrammarCheckT }) {
   const styles = {
     high: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800',
     medium: 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950/40 dark:text-yellow-300 dark:border-yellow-800',
@@ -140,7 +142,7 @@ function SeverityBadge({ severity, t }: { severity: GrammarIssue['severity']; t:
   return <Badge className={styles[severity]}>{labels[severity]}</Badge>;
 }
 
-function TypeBadge({ type, t }: { type: GrammarIssue['type']; t: any }) {
+function TypeBadge({ type, t }: { type: GrammarIssue['type']; t: GrammarCheckT }) {
   const labelMap: Record<GrammarIssue['type'], string> = {
     grammar: t('typeGrammar'),
     weak_verb: t('typeWeakVerb'),
@@ -156,7 +158,7 @@ function TypeBadge({ type, t }: { type: GrammarIssue['type']; t: any }) {
 }
 
 /* ── Result view (shared between new check & history detail) ── */
-function GrammarCheckResultView({ result, t }: { result: GrammarCheckResult; t: any }) {
+function GrammarCheckResultView({ result, t }: { result: GrammarCheckResult; t: GrammarCheckT }) {
   return (
     <div className="px-6 py-4 space-y-6">
       {/* Score */}
@@ -290,8 +292,9 @@ export function GrammarCheckDialog({ open, onOpenChange, resumeId }: GrammarChec
       const data: GrammarCheckResult = await res.json();
       setResult(data);
       fetchHistory();
-    } catch (err: any) {
-      setError(err.message || 'Failed to check grammar');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to check grammar';
+      setError(message);
     } finally {
       setIsChecking(false);
     }

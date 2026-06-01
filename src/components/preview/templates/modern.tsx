@@ -1,7 +1,7 @@
 'use client';
 
-import type { Resume, PersonalInfoContent, SummaryContent, WorkExperienceContent, EducationContent, SkillsContent, ProjectsContent, CertificationsContent, LanguagesContent, CustomContent, GitHubContent } from '@/types/resume';
-import { degreeField, isSectionEmpty, md } from '../utils';
+import type { Resume, SummaryContent, SkillsContent, ProjectsContent, CertificationsContent, LanguagesContent, CustomContent, GitHubContent } from '@/types/resume';
+import { degreeField, md } from '../utils';
 import { AvatarImage } from '../avatar-image';
 import { QrCodesPreview } from '../qr-codes-preview';
 import { GroupedSkillPills } from '../skill-categories';

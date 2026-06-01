@@ -188,8 +188,9 @@ export async function generateHtml(
        }
        /* Smart pagination: allow sections to break across pages, keep individual items together.
           overflow:visible is critical — Chrome treats overflow:hidden as monolithic (no page fragmentation). */
-       [data-section] { break-inside: auto !important; overflow: visible !important; }
-       [data-section] * { overflow: visible !important; }
+       [data-section],
+       [data-pdf-entry],
+       [data-pdf-entry-header] { break-inside: auto !important; overflow: visible !important; }
        [data-section] [class*="space-y"] { break-inside: auto !important; }
        [data-section] [class*="space-y"] > div, .item { break-inside: avoid !important; }
        [data-section] [class*="space-y"] > [data-pdf-entry] { break-inside: auto !important; }

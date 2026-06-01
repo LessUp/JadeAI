@@ -2,7 +2,6 @@
 
 import type {
   Resume,
-  PersonalInfoContent,
   SummaryContent,
   WorkExperienceContent,
   EducationContent,
@@ -14,7 +13,7 @@ import type {
   GitHubContent,
 } from '@/types/resume';
 import { AvatarImage } from '../avatar-image';
-import { degreeField, isSectionEmpty, md } from '../utils';
+import { degreeField, md } from '../utils';
 import { QrCodesPreview } from '../qr-codes-preview';
 import { getLanguageDescriptionText } from '@/lib/language-description';
 import { getSidebarTemplateModel } from '@/lib/resume-template-shared/sidebar';

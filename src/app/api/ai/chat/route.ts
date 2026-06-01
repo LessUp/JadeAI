@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { streamText, stepCountIs, consumeStream, type UIMessage } from 'ai';
 import { getModel, extractAIConfig, AIConfigError } from '@/lib/ai/provider';
-import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
+import { resolveCurrentUser } from '@/lib/auth/helpers';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { chatRepository } from '@/lib/db/repositories/chat.repository';
 import { getSystemPrompt } from '@/lib/ai/prompts';
@@ -185,11 +185,11 @@ export async function POST(request: NextRequest) {
   let diagnostics: StreamDiagnostics | undefined;
   let finishPersisted = false;
   try {
-    const fingerprint = getUserIdFromRequest(request);
-    const user = await resolveUser(fingerprint);
-    if (!user) {
+    const currentUser = await resolveCurrentUser({ request });
+    if (!currentUser) {
       return new Response('Unauthorized', { status: 401 });
     }
+    const user = currentUser.user;
 
     const {
       messages,
@@ -233,6 +233,10 @@ export async function POST(request: NextRequest) {
       resumeContext = JSON.stringify(resume.sections);
     }
 
+    const aiConfig = extractAIConfig(request);
+    const model = getModel(aiConfig, modelId);
+    const truncatedMessages = await buildChatContextMessages(messages);
+
     // Save user message to DB before streaming
     if (sessionId && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
@@ -275,10 +279,6 @@ export async function POST(request: NextRequest) {
         } satisfies AIChatMessageMetadata,
       });
     }
-
-    const aiConfig = extractAIConfig(request);
-    const model = getModel(aiConfig, modelId);
-    const truncatedMessages = await buildChatContextMessages(messages);
     if (!diagnostics) {
       startedAt = Date.now();
       diagnostics = createInitialDiagnostics(startedAt);

@@ -36,13 +36,13 @@ export function GitHubSection({ section, onUpdate }: Props) {
       language: '',
       description: '',
     };
-    onUpdate({ items: [...items, newItem] } as any);
+    onUpdate({ items: [...items, newItem] });
   };
 
   const updateItem = (index: number, data: Partial<GitHubRepoItem>) => {
     const latest = itemsRef.current;
     const updated = latest.map((item, i) => (i === index ? { ...item, ...data } : item));
-    onUpdate({ items: updated } as any);
+    onUpdate({ items: updated });
   };
 
   const removeItem = (index: number) => {
@@ -50,7 +50,7 @@ export function GitHubSection({ section, onUpdate }: Props) {
     const timer = debounceTimers.current.get(item.id);
     if (timer) clearTimeout(timer);
     debounceTimers.current.delete(item.id);
-    onUpdate({ items: items.filter((_, i) => i !== index) } as any);
+    onUpdate({ items: items.filter((_, i) => i !== index) });
   };
 
   const fetchRepo = async (index: number, url: string) => {

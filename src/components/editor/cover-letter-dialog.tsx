@@ -29,6 +29,13 @@ interface CoverLetterResult {
 }
 
 type Tone = 'formal' | 'friendly' | 'confident';
+type ToneLabelKey = 'toneFormal' | 'toneFriendly' | 'toneConfident';
+
+const TONE_LABEL_KEYS: Record<Tone, ToneLabelKey> = {
+  formal: 'toneFormal',
+  friendly: 'toneFriendly',
+  confident: 'toneConfident',
+};
 
 export function CoverLetterDialog({ open, onOpenChange, resumeId }: CoverLetterDialogProps) {
   const t = useTranslations('coverLetter');
@@ -65,8 +72,9 @@ export function CoverLetterDialog({ open, onOpenChange, resumeId }: CoverLetterD
 
       const data: CoverLetterResult = await res.json();
       setResult(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to generate cover letter');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to generate cover letter';
+      setError(message);
     } finally {
       setIsGenerating(false);
     }
@@ -157,7 +165,7 @@ export function CoverLetterDialog({ open, onOpenChange, resumeId }: CoverLetterD
                     onClick={() => setTone(t_tone)}
                     disabled={isGenerating}
                   >
-                    {t(`tone${t_tone.charAt(0).toUpperCase() + t_tone.slice(1)}` as any)}
+                    {t(TONE_LABEL_KEYS[t_tone])}
                   </button>
                 ))}
               </div>

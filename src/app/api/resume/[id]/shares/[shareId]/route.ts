@@ -41,7 +41,6 @@ export async function PATCH(
     if (isActive !== undefined) updates.isActive = isActive;
 
     const updated = await shareRepository.update(shareId, updates);
-    console.log('[shares/PATCH] updated share:', shareId, 'isActive:', updated?.isActive, 'updates:', updates);
     return NextResponse.json({
       ...updated,
       hasPassword: !!updated?.password,

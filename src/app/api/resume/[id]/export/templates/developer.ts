@@ -9,7 +9,7 @@ import type {
   CustomContent,
   GitHubContent,
 } from '@/types/resume';
-import { esc, md, degreeField, getPersonalInfo, visibleSections, buildHighlights, buildQrCodesHtml, type ResumeWithSections, type Section } from '../utils';
+import { esc, md, degreeField, getPersonalInfo, visibleSections, buildQrCodesHtml, type ResumeWithSections, type Section } from '../utils';
 
 function buildDeveloperSectionContent(section: Section, lang: string): string {
   const c = section.content as any;

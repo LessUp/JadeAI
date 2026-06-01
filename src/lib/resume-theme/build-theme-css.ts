@@ -129,7 +129,7 @@ export function buildThemeCss({
   }
 
   return `
-    ${selector}, ${selector} * {
+    ${selector} {
       font-family: ${safeTheme.fontFamily} !important;
     }
     ${selector} > div {
@@ -137,7 +137,7 @@ export function buildThemeCss({
       ${needsPadding ? `padding-top: ${margin.top}px !important; padding-right: ${margin.right}px !important; padding-bottom: ${margin.bottom}px !important; padding-left: ${margin.left}px !important;` : ''}
       ${themeVariables}
     }
-    ${selector} p, ${selector} li, ${selector} span, ${selector} td, ${selector} a, ${selector} div {
+    ${selector} p, ${selector} li, ${selector} span, ${selector} td, ${selector} a {
       font-size: ${fs.body} !important;
       line-height: ${safeTheme.lineSpacing} !important;
     }

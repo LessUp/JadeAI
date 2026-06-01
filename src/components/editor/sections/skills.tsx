@@ -25,16 +25,16 @@ export function SkillsSection({ section, onUpdate }: Props) {
       name: '',
       skills: [],
     };
-    onUpdate({ categories: [...categories, newCategory] } as any);
+    onUpdate({ categories: [...categories, newCategory] });
   };
 
   const updateCategory = (index: number, data: Partial<SkillCategory>) => {
     const updated = categories.map((cat, i) => (i === index ? { ...cat, ...data } : cat));
-    onUpdate({ categories: updated } as any);
+    onUpdate({ categories: updated });
   };
 
   const removeCategory = (index: number) => {
-    onUpdate({ categories: categories.filter((_, i) => i !== index) } as any);
+    onUpdate({ categories: categories.filter((_, i) => i !== index) });
   };
 
   return (

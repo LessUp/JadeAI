@@ -28,10 +28,25 @@ test('normalizes theme colors, numbers, and font stacks', () => {
 
 test('rejects font stacks that can break out of CSS declarations', () => {
   const fallback = normalizeFontStack(DEFAULT_THEME.fontFamily);
+
   assert.equal(normalizeFontStack('Inter; color:red'), fallback);
-  assert.equal(normalizeFontStack('Inter, url(https://example.com/font.woff2)'), fallback);
+  assert.equal(normalizeFontStack('Inter, url(https://example.com/font.woff2)'), 'Inter');
   assert.equal(normalizeFontStack('Inter /* comment */'), fallback);
   assert.equal(normalizeFontStack('Inter } body { display:none'), fallback);
+});
+
+test('normalizes font stacks token-by-token and keeps valid families', () => {
+  const fallback = normalizeFontStack(DEFAULT_THEME.fontFamily);
+
+  assert.equal(
+    normalizeFontStack('"Inter", "Noto Sans SC", sans-serif'),
+    'Inter, "Noto Sans SC", sans-serif',
+  );
+  assert.equal(
+    normalizeFontStack('sans-serif, "Noto Sans SC", "Inter", url(https://bad.font)'),
+    'sans-serif, "Noto Sans SC", Inter',
+  );
+  assert.equal(normalizeFontStack('url(https://bad.font), ;;;'), fallback);
 });
 
 test('buildThemeCss only emits normalized theme values', () => {

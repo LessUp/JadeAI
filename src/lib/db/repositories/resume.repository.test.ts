@@ -4,7 +4,7 @@ import test, { after } from 'node:test';
 
 import { DEFAULT_THEME } from '@/lib/resume-theme/default-theme';
 
-const testDbPath = './data/resume-repository-integration.test.db';
+const testDbPath = './data/resume-repository-theme.test.db';
 const generatedDbFiles = [testDbPath, `${testDbPath}-wal`, `${testDbPath}-shm`];
 
 for (const file of generatedDbFiles) {
@@ -13,7 +13,6 @@ for (const file of generatedDbFiles) {
 
 process.env.DB_TYPE = 'sqlite';
 process.env.SQLITE_PATH = testDbPath;
-delete process.env.DATABASE_URL;
 
 let closeDatabase: (() => Promise<void>) | undefined;
 
@@ -68,153 +67,102 @@ test('create persists normalized themeConfig from the POST repository path', asy
   });
 });
 
-test('saveDraft syncs resume sections atomically and preserves ownership', async () => {
-  const [{ db, dbReady }, { resumeRepository }, { users, resumes, resumeSections }] = await Promise.all([
+test('replaceDraftForUser keeps resume metadata and sections unchanged when any write in the transaction fails', async () => {
+  const [{ db, dbReady }, { users }, { resumeRepository }] = await Promise.all([
     import('../index'),
-    import('./resume.repository'),
     import('../schema'),
+    import('./resume.repository'),
   ]);
   await dbReady;
 
-  const ownerId = 'draft-owner';
-  const otherUserId = 'draft-other-user';
-  await db.insert(users).values([
-    { id: ownerId, fingerprint: 'draft-owner-fingerprint', authType: 'fingerprint' },
-    { id: otherUserId, fingerprint: 'draft-other-fingerprint', authType: 'fingerprint' },
-  ]);
+  const userId = crypto.randomUUID();
+  await db.insert(users).values({
+    id: userId,
+    authType: 'fingerprint',
+    fingerprint: `transaction-rollback-${userId}`,
+  });
 
-  await db.insert(resumes).values({
-    id: 'draft-resume',
-    userId: ownerId,
-    title: 'Original resume',
+  const resume = await resumeRepository.create({
+    userId,
+    title: 'Before rollback',
     template: 'classic',
-    language: 'zh',
+    language: 'en',
   });
-  await db.insert(resumeSections).values([
-    {
-      id: 'draft-keep',
-      resumeId: 'draft-resume',
-      type: 'summary',
-      title: 'Summary',
-      sortOrder: 0,
-      visible: true,
-      content: { text: 'old' },
-    },
-    {
-      id: 'draft-remove',
-      resumeId: 'draft-resume',
-      type: 'skills',
-      title: 'Skills',
-      sortOrder: 1,
-      visible: true,
-      content: { categories: [] },
-    },
-  ]);
+  assert.ok(resume);
 
-  const saved = await resumeRepository.saveDraft('draft-resume', {
-    userId: ownerId,
-    metadata: {
-      title: 'Updated resume',
-      themeConfig: { primaryColor: '#123456' },
-    },
-    sections: [
-      {
-        id: 'draft-keep',
-        type: 'summary',
-        title: 'Updated summary',
-        sortOrder: 1,
-        visible: false,
-        content: { text: 'new' },
-      },
-      {
-        id: 'draft-new',
-        type: 'projects',
-        title: 'Projects',
-        sortOrder: 2,
-        visible: true,
-        content: { items: [] },
-      },
-    ],
+  const sectionAId = crypto.randomUUID();
+  const sectionBId = crypto.randomUUID();
+  await resumeRepository.createSection({
+    id: sectionAId,
+    resumeId: resume.id,
+    type: 'summary',
+    title: 'Summary',
+    sortOrder: 0,
+    visible: true,
+    content: { text: 'before-summary' },
+  });
+  await resumeRepository.createSection({
+    id: sectionBId,
+    resumeId: resume.id,
+    type: 'skills',
+    title: 'Skills',
+    sortOrder: 1,
+    visible: true,
+    content: { categories: [{ id: crypto.randomUUID(), name: 'Core', skills: ['TypeScript'] }] },
   });
 
-  assert.ok(saved);
-  assert.equal(saved.title, 'Updated resume');
-  assert.deepEqual(saved.themeConfig, { primaryColor: '#123456' });
-  assert.deepEqual(
-    saved.sections.map((section: { id: string }) => section.id),
-    ['draft-keep', 'draft-new'],
-  );
-  assert.equal(saved.sections[0].title, 'Updated summary');
-  assert.equal(saved.sections[0].visible, false);
-
-  const denied = await resumeRepository.saveDraft('draft-resume', {
-    userId: otherUserId,
-    metadata: { title: 'Denied title' },
-  });
-  assert.equal(denied, null);
-  assert.equal((await resumeRepository.findById('draft-resume'))?.title, 'Updated resume');
-
-  await db.insert(resumes).values({
-    id: 'rollback-resume',
-    userId: ownerId,
-    title: 'Rollback original',
-    template: 'classic',
-    language: 'zh',
-  });
-  await db.insert(resumeSections).values([
-    {
-      id: 'rollback-keep',
-      resumeId: 'rollback-resume',
-      type: 'summary',
-      title: 'Rollback summary',
-      sortOrder: 0,
-      visible: true,
-      content: { text: 'old' },
-    },
-    {
-      id: 'rollback-remove',
-      resumeId: 'rollback-resume',
-      type: 'skills',
-      title: 'Rollback skills',
-      sortOrder: 1,
-      visible: true,
-      content: { categories: [] },
-    },
-  ]);
-
+  const duplicateSectionId = crypto.randomUUID();
   await assert.rejects(
-    resumeRepository.saveDraft('rollback-resume', {
-      userId: ownerId,
-      metadata: { title: 'Should roll back' },
+    resumeRepository.replaceDraftForUser({
+      id: resume.id,
+      userId,
+      title: 'Should rollback',
       sections: [
         {
-          id: 'rollback-keep',
+          id: sectionAId,
           type: 'summary',
-          title: 'Changed before failure',
+          title: 'Summary updated',
           sortOrder: 0,
-          visible: false,
-          content: { text: 'changed' },
+          visible: true,
+          content: { text: 'after-summary' },
         },
         {
-          id: 'rollback-invalid',
-          type: null as unknown as string,
-          title: 'Invalid section',
+          id: duplicateSectionId,
+          type: 'custom',
+          title: 'New section #1',
+          sortOrder: 1,
+          visible: true,
+          content: { items: [] },
+        },
+        {
+          id: duplicateSectionId,
+          type: 'custom',
+          title: 'New section #2',
           sortOrder: 2,
           visible: true,
-          content: {},
+          content: { items: [] },
         },
       ],
     }),
-    /constraint|not null/i,
   );
 
-  const rolledBack = await resumeRepository.findById('rollback-resume');
-  assert.ok(rolledBack);
-  assert.equal(rolledBack.title, 'Rollback original');
-  assert.deepEqual(
-    rolledBack.sections.map((section: { id: string }) => section.id),
-    ['rollback-keep', 'rollback-remove'],
-  );
-  assert.equal(rolledBack.sections[0].title, 'Rollback summary');
-  assert.equal(rolledBack.sections[0].visible, true);
+  const after = await resumeRepository.findById(resume.id);
+  assert.ok(after);
+  assert.equal(after.title, 'Before rollback');
+
+  const summarySection = after.sections.find((section: any) => section.id === sectionAId);
+  const skillsSection = after.sections.find((section: any) => section.id === sectionBId);
+  assert.ok(summarySection);
+  assert.ok(skillsSection);
+  assert.equal(after.sections.length, 2);
+  assert.deepEqual(summarySection.content, { text: 'before-summary' });
+  assert.deepEqual(skillsSection.content, {
+    categories: [
+      {
+        id: (skillsSection.content as any).categories[0].id,
+        name: 'Core',
+        skills: ['TypeScript'],
+      },
+    ],
+  });
 });

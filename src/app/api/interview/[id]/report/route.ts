@@ -59,8 +59,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       };
     });
 
-    const lang = locale === 'zh' ? '中文' : 'English';
-
     const reportPrompt = locale === 'zh'
       ? `你是一位拥有丰富面试评估经验的人才评估专家。请基于以下面试对话记录，对候选人进行系统化、结构化的评估分析，生成专业的面试评估报告。请以 JSON 格式输出。
 

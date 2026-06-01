@@ -9,7 +9,7 @@ import type {
   CustomContent,
   GitHubContent,
 } from '@/types/resume';
-import { esc, md, degreeField, getPersonalInfo, visibleSections, buildHighlights, buildQrCodesHtml, type ResumeWithSections, type Section } from '../utils';
+import { esc, md, degreeField, getPersonalInfo, visibleSections, buildQrCodesHtml, type ResumeWithSections, type Section } from '../utils';
 
 const RED = '#dc2626';
 const TEXT = '#18181b';

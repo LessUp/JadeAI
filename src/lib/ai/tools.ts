@@ -4,6 +4,7 @@ import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { getModel, getJsonProviderOptions, type AIConfig } from '@/lib/ai/provider';
 import { jdAnalysisOutputSchema } from '@/lib/ai/jd-analysis-schema';
 import { extractJson } from '@/lib/ai/extract-json';
+import { normalizeResumeSectionContent } from '@/lib/resume-section/schema';
 
 const STREAM_TOOL_TIMEOUT_MS = 60_000;
 const GITHUB_FETCH_TIMEOUT_MS = 15_000;
@@ -122,9 +123,16 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
         }
 
         const updatedContent = { ...(section.content as Record<string, unknown>), [actualField]: parsedValue };
-        await resumeRepository.updateSection(sectionId, { content: updatedContent });
+        const normalizedContent = normalizeResumeSectionContent(section.type, updatedContent);
 
-        return { success: true, sectionType: section.type, field: actualField, updatedContent };
+        const latestResume = await resumeRepository.findByIdForUser(resumeId, userId);
+        if (!latestResume) return { success: false, error: 'Resume not found' };
+        const latestSection = latestResume.sections.find((s: any) => s.id === sectionId);
+        if (!latestSection) return { success: false, error: 'Section not found' };
+
+        await resumeRepository.updateSection(sectionId, { content: normalizedContent });
+
+        return { success: true, sectionType: section.type, field: actualField, updatedContent: normalizedContent };
       },
     }),
 
@@ -152,12 +160,14 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
           else parsedContent = { items: [] };
         }
 
+        const normalizedContent = normalizeResumeSectionContent(type, parsedContent);
+
         const section = await resumeRepository.createSection({
           resumeId,
           type,
           title,
           sortOrder: maxOrder + 1,
-          content: parsedContent,
+          content: normalizedContent,
         });
 
         return { success: true, sectionType: type, sectionId: section?.id };
@@ -179,7 +189,8 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
         if (!section) return { success: false, error: 'Section not found' };
 
         const updatedContent = { ...(section.content as Record<string, unknown>), [field]: improvedText };
-        await resumeRepository.updateSection(sectionId, { content: updatedContent });
+        const normalizedContent = normalizeResumeSectionContent(section.type, updatedContent);
+        await resumeRepository.updateSection(sectionId, { content: normalizedContent });
 
         return { success: true, sectionType: section.type, field, improvedText };
       },
@@ -209,7 +220,8 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
           categories.push({ id: crypto.randomUUID(), name: category, skills });
         }
 
-        await resumeRepository.updateSection(skillsSection.id, { content: { categories } });
+        const normalizedContent = normalizeResumeSectionContent(skillsSection.type, { categories });
+        await resumeRepository.updateSection(skillsSection.id, { content: normalizedContent });
 
         return { success: true, category, skills, sectionId: skillsSection.id };
       },
@@ -315,9 +327,14 @@ Rules:
         for (const r of results) {
           if (!r.ok) { failed++; continue; }
           const translated = r.data;
+          const sectionType = resume.sections.find((section: any) => section.id === translated.sectionId)?.type;
+          const normalizedContent = sectionType
+            ? normalizeResumeSectionContent(sectionType, translated.content)
+            : translated.content;
+
           await resumeRepository.updateSection(translated.sectionId, {
             title: translated.title,
-            content: translated.content,
+            content: normalizedContent,
           });
           succeeded++;
         }

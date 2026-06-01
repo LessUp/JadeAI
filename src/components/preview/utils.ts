@@ -38,7 +38,10 @@ export function degreeField(degree: string, field: string | undefined): string {
 }
 
 export function isSectionEmpty(section: ResumeSection): boolean {
-  const content = section.content as any;
+  const content = section.content as ResumeSection['content'] & {
+    items?: unknown[];
+    categories?: SkillsContent['categories'];
+  };
 
   if (section.type === 'summary') {
     return !String((content as SummaryContent).text ?? '').trim();

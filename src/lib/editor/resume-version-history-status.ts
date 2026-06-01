@@ -3,6 +3,11 @@ export interface LocalVersionHistoryFailureCopy {
   description: string;
 }
 
+export interface AutoSaveFailureCopy {
+  title: string;
+  description: string;
+}
+
 export function getLocalVersionHistoryFailureCopy(locale?: string): LocalVersionHistoryFailureCopy {
   if (locale?.toLowerCase().startsWith('zh')) {
     return {
@@ -14,5 +19,19 @@ export function getLocalVersionHistoryFailureCopy(locale?: string): LocalVersion
   return {
     title: 'Local version history was not saved',
     description: 'Your resume save can continue, but local browser history may be unavailable. Check browser storage permissions or available space.',
+  };
+}
+
+export function getAutoSaveFailureCopy(locale?: string): AutoSaveFailureCopy {
+  if (locale?.toLowerCase().startsWith('zh')) {
+    return {
+      title: '自动保存失败',
+      description: '当前改动尚未保存到服务器，请检查网络或稍后手动保存。',
+    };
+  }
+
+  return {
+    title: 'Auto-save failed',
+    description: 'Recent changes were not saved to the server. Check your network or save manually.',
   };
 }

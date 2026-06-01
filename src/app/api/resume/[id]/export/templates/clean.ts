@@ -45,7 +45,6 @@ function buildCleanSectionContent(s: Section, lang: string): string {
   }
 
   if (s.type === 'projects') {
-    const BL = '#0066cc';
     return `<div class="space-y-4">${((c as ProjectsContent).items || []).map((it: any) => `<div>
       <div class="flex items-baseline justify-between"><span class="text-sm font-bold" style="color:${TL}">${esc(it.name)}</span>${it.startDate ? `<span class="shrink-0 text-xs text-zinc-400">${esc(it.startDate)} – ${it.endDate ? esc(it.endDate) : (lang === 'zh' ? '至今' : 'Present')}</span>` : ''}</div>
       ${it.description ? `<div class="mt-1 text-sm text-zinc-600">${md(it.description)}</div>` : ''}

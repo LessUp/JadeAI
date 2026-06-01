@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
-import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
+import { resolveCurrentUser } from '@/lib/auth/helpers';
 import type { ResumeSection } from '@/types/resume';
-import { mergeThemeConfig } from '@/lib/resume-theme/build-theme-css';
 
 type IncomingSection = Pick<ResumeSection, 'id' | 'type' | 'title' | 'sortOrder' | 'visible' | 'content'>;
 
@@ -14,9 +13,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const fingerprint = getUserIdFromRequest(request);
-    const user = await resolveUser(fingerprint);
-    if (!user) {
+    const currentUser = await resolveCurrentUser({ request });
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -24,7 +22,7 @@ export async function GET(
     if (!resume) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
-    if (resume.userId !== user.id) {
+    if (resume.userId !== currentUser.user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -41,9 +39,8 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const fingerprint = getUserIdFromRequest(request);
-    const user = await resolveUser(fingerprint);
-    if (!user) {
+    const currentUser = await resolveCurrentUser({ request });
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -51,22 +48,33 @@ export async function PUT(
     if (!resume) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
-    if (resume.userId !== user.id) {
+    if (resume.userId !== currentUser.user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await request.json();
     const { title, template, themeConfig, language, sections } = body;
+    const incomingSections = Array.isArray(sections) ? (sections as IncomingSection[]) : undefined;
 
-    const updated = await resumeRepository.saveDraft(id, {
-      userId: user.id,
-      metadata: {
-        ...(title && { title }),
-        ...(template && { template }),
-        ...(themeConfig && { themeConfig: mergeThemeConfig(themeConfig) }),
-        ...(language && { language }),
-      },
-      sections: sections && Array.isArray(sections) ? (sections as IncomingSection[]) : undefined,
+    // Update resume metadata
+    // Sync sections: create new, update existing, delete removed
+    const updated = await resumeRepository.replaceDraftForUser({
+      id,
+      userId: currentUser.user.id,
+      ...(title !== undefined ? { title } : {}),
+      ...(template !== undefined ? { template } : {}),
+      ...(themeConfig !== undefined ? { themeConfig } : {}),
+      ...(language !== undefined ? { language } : {}),
+      ...(incomingSections ? {
+        sections: incomingSections.map((section, index) => ({
+          id: section.id,
+          type: section.type,
+          title: section.title,
+          sortOrder: Number.isFinite(section.sortOrder) ? section.sortOrder : index,
+          visible: section.visible !== false,
+          content: section.content,
+        })),
+      } : {}),
     });
     return NextResponse.json(updated);
   } catch (error) {
@@ -81,9 +89,8 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const fingerprint = getUserIdFromRequest(request);
-    const user = await resolveUser(fingerprint);
-    if (!user) {
+    const currentUser = await resolveCurrentUser({ request });
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -91,7 +98,7 @@ export async function DELETE(
     if (!resume) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
-    if (resume.userId !== user.id) {
+    if (resume.userId !== currentUser.user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

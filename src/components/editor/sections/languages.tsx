@@ -21,16 +21,16 @@ export function LanguagesSection({ section, onUpdate }: Props) {
 
   const addItem = () => {
     const newItem: LanguageItem = { id: generateId(), language: '', proficiency: '' };
-    onUpdate({ items: [...items, newItem] } as any);
+    onUpdate({ items: [...items, newItem] });
   };
 
   const updateItem = (index: number, data: Partial<LanguageItem>) => {
     const updated = items.map((item, i) => (i === index ? { ...item, ...data } : item));
-    onUpdate({ items: updated } as any);
+    onUpdate({ items: updated });
   };
 
   const removeItem = (index: number) => {
-    onUpdate({ items: items.filter((_, i) => i !== index) } as any);
+    onUpdate({ items: items.filter((_, i) => i !== index) });
   };
 
   return (
@@ -50,7 +50,11 @@ export function LanguagesSection({ section, onUpdate }: Props) {
                 </Button>
               </div>
             </FieldWrapper>
-            <EditableText label={t('description')} value={(item as any).description || ''} onChange={(v) => updateItem(index, { description: v } as any)} />
+            <EditableText
+              label={t('description')}
+              value={item.description || ''}
+              onChange={(v) => updateItem(index, { description: v })}
+            />
           </div>
         </div>
       ))}

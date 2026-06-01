@@ -9,7 +9,7 @@ import type {
   CustomContent,
   GitHubContent,
 } from '@/types/resume';
-import { esc, md, degreeField, getPersonalInfo, visibleSections, buildHighlights, buildQrCodesHtml, type ResumeWithSections, type Section } from '../utils';
+import { esc, md, degreeField, getPersonalInfo, visibleSections, buildQrCodesHtml, type ResumeWithSections, type Section } from '../utils';
 
 const PRIMARY = '#1a1a1a';
 const ACCENT = '#dc2626';

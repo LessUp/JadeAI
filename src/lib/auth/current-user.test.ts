@@ -54,7 +54,7 @@ test('signed anonymous session cookie rejects tampering and wrong secrets', () =
   assert.equal(verifyAnonymousSessionCookieValue(cookieValue, 'different-secret'), null);
 });
 
-test('current user seam prefers signed cookie over client-controlled header', () => {
+test('current user seam resolves identity from signed cookie when present', () => {
   const cookieValue = createAnonymousSessionCookieValue('trusted-fingerprint', {
     secret: SECRET,
     issuedAt: 1,
@@ -64,7 +64,6 @@ test('current user seam prefers signed cookie over client-controlled header', ()
   const identity = getFingerprintIdentityFromRequest(
     requestWith({
       cookie: `${ANONYMOUS_SESSION_COOKIE}=${cookieValue}`,
-      'x-fingerprint': 'attacker-fingerprint',
     }),
     { secret: SECRET }
   );
@@ -74,6 +73,24 @@ test('current user seam prefers signed cookie over client-controlled header', ()
     source: 'cookie',
     fingerprint: 'trusted-fingerprint',
   });
+});
+
+test('current user seam rejects mismatched header when a signed session cookie exists', () => {
+  const cookieValue = createAnonymousSessionCookieValue('trusted-fingerprint', {
+    secret: SECRET,
+    issuedAt: 1,
+  });
+  assert.ok(cookieValue);
+
+  const identity = getFingerprintIdentityFromRequest(
+    requestWith({
+      cookie: `${ANONYMOUS_SESSION_COOKIE}=${cookieValue}`,
+      'x-fingerprint': 'different-fingerprint',
+    }),
+    { secret: SECRET }
+  );
+
+  assert.equal(identity, null);
 });
 
 test('current user seam keeps x-fingerprint fallback when cookie is missing or invalid', () => {
