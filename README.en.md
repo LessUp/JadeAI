@@ -115,15 +115,15 @@ This builds the image, starts it with a temporary Docker volume, and verifies ap
 
 The image now uses Debian slim instead of Alpine so Chromium and CJK font installation no longer depends on `apk`, which avoids the TLS and timeout failures some proxy setups hit during Docker builds.
 
-If Docker builds in mainland China fail while downloading `chromium` or `fonts-noto-cjk` with `unexpected EOF` or `Connection failed`, pass a Debian mirror for the build:
+If Docker builds in mainland China fail while downloading `chromium` or `fonts-noto-cjk` with `unexpected EOF` or `Connection failed`, explicitly pass a Debian mirror for the build:
 
 ```bash
-DEBIAN_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian \
-DEBIAN_SECURITY_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian-security \
+DEBIAN_MIRROR=http://mirrors.tuna.tsinghua.edu.cn/debian \
+DEBIAN_SECURITY_MIRROR=http://mirrors.tuna.tsinghua.edu.cn/debian-security \
 pnpm docker:build
 ```
 
-`docker:run` and `docker:publish` accept the same `DEBIAN_MIRROR` / `DEBIAN_SECURITY_MIRROR` environment variables. The Dockerfile also configures apt retries and network timeouts.
+`docker:run` and `docker:publish` accept the same `DEBIAN_MIRROR` / `DEBIAN_SECURITY_MIRROR` environment variables. The Dockerfile also configures apt retries/timeouts and now defaults to a mainland China mirror.
 
 If you prefer a host bind mount for the database:
 

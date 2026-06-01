@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1.7
 
 FROM node:22-bookworm-slim AS base
-ARG DEBIAN_MIRROR=
-ARG DEBIAN_SECURITY_MIRROR=
+ARG DEBIAN_MIRROR=http://mirrors.tuna.tsinghua.edu.cn/debian
+ARG DEBIAN_SECURITY_MIRROR=http://mirrors.tuna.tsinghua.edu.cn/debian-security
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
     NEXT_TELEMETRY_DISABLED=1
@@ -13,15 +13,15 @@ RUN set -eux; \
       'Acquire::https::Timeout "30";' \
       'Acquire::http::No-Cache "true";' \
       > /etc/apt/apt.conf.d/80-network-retries; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates; \
-    rm -rf /var/lib/apt/lists/*; \
     if [ -n "$DEBIAN_MIRROR" ]; then \
-      sed -i "s|http://deb.debian.org/debian|${DEBIAN_MIRROR%/}|g" /etc/apt/sources.list.d/debian.sources; \
+      sed -E -i "s|https?://deb.debian.org/debian|${DEBIAN_MIRROR%/}|g" /etc/apt/sources.list.d/debian.sources; \
     fi; \
     if [ -n "$DEBIAN_SECURITY_MIRROR" ]; then \
-      sed -i "s|http://deb.debian.org/debian-security|${DEBIAN_SECURITY_MIRROR%/}|g" /etc/apt/sources.list.d/debian.sources; \
-    fi
+      sed -E -i "s|https?://deb.debian.org/debian-security|${DEBIAN_SECURITY_MIRROR%/}|g" /etc/apt/sources.list.d/debian.sources; \
+    fi; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates; \
+    rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 
 # --- Dependencies ---
