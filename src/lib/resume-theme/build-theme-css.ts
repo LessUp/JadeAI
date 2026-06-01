@@ -135,7 +135,17 @@ export function buildThemeCss({
     ${selector} > div {
       line-height: ${safeTheme.lineSpacing} !important;
       ${needsPadding ? `padding-top: ${margin.top}px !important; padding-right: ${margin.right}px !important; padding-bottom: ${margin.bottom}px !important; padding-left: ${margin.left}px !important;` : ''}
-      ${themeVariables}
+      --base-body-size: ${fs.body};
+      --base-h1-size: ${fs.h1};
+      --base-h2-size: ${fs.h2};
+      --base-h3-size: ${fs.h3};
+      --base-line-spacing: ${safeTheme.lineSpacing};
+      --base-section-spacing: ${safeTheme.sectionSpacing}px;
+      --base-margin-top: ${margin.top}px;
+      --base-margin-right: ${margin.right}px;
+      --base-margin-bottom: ${margin.bottom}px;
+      --base-margin-left: ${margin.left}px;
+      ${needsPaddingCss}
     }
     ${selector} p, ${selector} li, ${selector} span, ${selector} td, ${selector} a {
       font-size: ${fs.body} !important;
