@@ -1,5 +1,10 @@
 import { create } from 'zustand';
 import { AI_PROVIDER_DEFAULTS, DEFAULT_AI_PROVIDER, normalizeAIProvider, type AIProvider } from '@/lib/ai/shared';
+import {
+  reconcileLocalAISettingsWithServerDefaults,
+  resolveEffectiveAISettings,
+  type AISettingsReconciliationInput,
+} from '@/lib/ai/settings-reconciliation';
 
 export type { AIProvider } from '@/lib/ai/shared';
 
@@ -27,6 +32,7 @@ interface SettingsStore {
   // Hydration state
   _hydrated: boolean;
   _syncing: boolean;
+  settingsSyncError: string | null;
 
   // Actions
   setAIProvider: (provider: AIProvider) => void;
@@ -36,6 +42,7 @@ interface SettingsStore {
   setServerAIConfig: (config: ServerAIState) => void;
   setAutoSave: (enabled: boolean) => void;
   setAutoSaveInterval: (interval: number) => void;
+  clearSettingsSyncError: () => void;
   hydrate: () => void;
 }
 
@@ -81,6 +88,34 @@ function getHeaders(): Record<string, string> {
   };
 }
 
+function getSettingsSyncError(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+}
+
+async function readSettingsSyncError(response: Response, fallback: string) {
+  try {
+    const data = await response.json();
+    if (typeof data?.error === 'string' && data.error) return data.error;
+  } catch {
+    // Fall through to status-based error.
+  }
+  return `${fallback} (${response.status})`;
+}
+
+function getAIReconciliationInput(state: SettingsStore): AISettingsReconciliationInput {
+  return {
+    aiProvider: state.aiProvider,
+    aiApiKey: state.aiApiKey,
+    aiBaseURL: state.aiBaseURL,
+    aiModel: state.aiModel,
+    serverAIConfigured: state.serverAIConfigured,
+    serverAIProvider: state.serverAIProvider,
+    serverAIBaseURL: state.serverAIBaseURL,
+    serverAIModel: state.serverAIModel,
+  };
+}
+
 // Sync settings to server (debounced)
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -88,7 +123,7 @@ function syncToServer(state: SettingsStore) {
   if (syncTimeout) clearTimeout(syncTimeout);
   syncTimeout = setTimeout(async () => {
     try {
-      await fetch('/api/user/settings', {
+      const res = await fetch('/api/user/settings', {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify({
@@ -99,8 +134,14 @@ function syncToServer(state: SettingsStore) {
           autoSaveInterval: state.autoSaveInterval,
         }),
       });
-    } catch {
-      // silently fail, local state is still correct
+      if (!res.ok) {
+        throw new Error(await readSettingsSyncError(res, 'Unable to sync settings'));
+      }
+      useSettingsStore.setState({ settingsSyncError: null });
+    } catch (error) {
+      useSettingsStore.setState({
+        settingsSyncError: getSettingsSyncError(error, 'Unable to sync settings. Local changes are still saved in this browser.'),
+      });
     }
   }, 500);
 }
@@ -136,26 +177,14 @@ function loadApiKeyLocally(): string {
 }
 
 export function getAIHeaders(): Record<string, string> {
-  const {
-    aiProvider,
-    aiApiKey,
-    aiBaseURL,
-    aiModel,
-    serverAIConfigured,
-    serverAIProvider,
-    serverAIBaseURL,
-    serverAIModel,
-  } = useSettingsStore.getState();
-
-  const useServerDefaults = !aiApiKey && serverAIConfigured && aiProvider !== serverAIProvider;
-  const effectiveProvider = useServerDefaults ? serverAIProvider : aiProvider;
-  const effectiveBaseURL = useServerDefaults ? serverAIBaseURL : aiBaseURL;
-  const effectiveModel = useServerDefaults ? serverAIModel : aiModel;
+  const state = useSettingsStore.getState();
+  const { provider, baseURL, model } = resolveEffectiveAISettings(getAIReconciliationInput(state));
+  const localApiKey = state.aiApiKey.trim();
   const headers: Record<string, string> = {};
-  if (effectiveProvider) headers['x-provider'] = effectiveProvider;
-  if (aiApiKey) headers['x-api-key'] = aiApiKey;
-  if (effectiveBaseURL) headers['x-base-url'] = effectiveBaseURL;
-  if (effectiveModel) headers['x-model'] = effectiveModel;
+  if (provider) headers['x-provider'] = provider;
+  if (localApiKey) headers['x-api-key'] = localApiKey;
+  if (baseURL) headers['x-base-url'] = baseURL;
+  if (model) headers['x-model'] = model;
   return headers;
 }
 
@@ -172,6 +201,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   autoSaveInterval: 500,
   _hydrated: false,
   _syncing: false,
+  settingsSyncError: null,
 
   setAIProvider: (provider) => {
     const { aiProvider: prev, aiBaseURL, aiModel, aiApiKey } = get();
@@ -206,19 +236,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         serverAIModel: model,
       };
 
-      if (!state.aiApiKey) {
-        if (state.aiProvider !== normalizedProvider) {
-          nextState.aiProvider = normalizedProvider;
-          nextState.aiBaseURL = baseURL;
-          nextState.aiModel = model;
-        } else {
-          if (!state.aiBaseURL || state.aiBaseURL === PROVIDER_DEFAULTS[normalizedProvider].baseURL) {
-            nextState.aiBaseURL = baseURL;
-          }
-          if (!state.aiModel || state.aiModel === PROVIDER_DEFAULTS[normalizedProvider].model) {
-            nextState.aiModel = model;
-          }
-        }
+      if (!state.aiApiKey.trim() && configured) {
+        nextState.aiProvider = normalizedProvider;
+        nextState.aiBaseURL = baseURL;
+        nextState.aiModel = model;
       }
 
       return nextState;
@@ -226,8 +247,15 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   },
 
   setAIApiKey: (key) => {
-    set({ aiApiKey: key });
-    saveApiKeyLocally(key);
+    const apiKey = key.trim();
+    set((state) => {
+      const nextState = { ...state, aiApiKey: apiKey };
+      return {
+        aiApiKey: apiKey,
+        ...reconcileLocalAISettingsWithServerDefaults(getAIReconciliationInput(nextState)),
+      };
+    });
+    saveApiKeyLocally(apiKey);
     syncProviderConfig(get());
   },
 
@@ -253,6 +281,8 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     syncToServer(get());
   },
 
+  clearSettingsSyncError: () => set({ settingsSyncError: null }),
+
   hydrate: async () => {
     if (get()._hydrated) return;
 
@@ -267,19 +297,32 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         const data = await res.json();
         // Backward compat: map legacy 'custom' provider to 'openai'
         const provider = normalizeAIProvider(data.aiProvider);
-        set({
-          ...(provider && { aiProvider: provider }),
-          ...(data.aiBaseURL && { aiBaseURL: data.aiBaseURL }),
-          ...(data.aiModel && { aiModel: data.aiModel }),
-          ...(typeof data.autoSave === 'boolean' && { autoSave: data.autoSave }),
-          ...(typeof data.autoSaveInterval === 'number' && { autoSaveInterval: data.autoSaveInterval }),
-          _hydrated: true,
+        set((state) => {
+          const nextState = {
+            ...state,
+            ...(provider && { aiProvider: provider }),
+            ...(data.aiBaseURL && { aiBaseURL: data.aiBaseURL }),
+            ...(data.aiModel && { aiModel: data.aiModel }),
+            ...(typeof data.autoSave === 'boolean' && { autoSave: data.autoSave }),
+            ...(typeof data.autoSaveInterval === 'number' && { autoSaveInterval: data.autoSaveInterval }),
+            _hydrated: true,
+            settingsSyncError: null,
+          };
+          return {
+            ...nextState,
+            ...reconcileLocalAISettingsWithServerDefaults(getAIReconciliationInput(nextState)),
+          };
         });
         // Seed provider config cache with hydrated values
         syncProviderConfig(get());
         return;
       }
-    } catch { /* fall through */ }
+      throw new Error(await readSettingsSyncError(res, 'Unable to load settings'));
+    } catch (error) {
+      set({
+        settingsSyncError: getSettingsSyncError(error, 'Unable to load synced settings. Local settings are still available.'),
+      });
+    }
 
     set({ _hydrated: true });
   },

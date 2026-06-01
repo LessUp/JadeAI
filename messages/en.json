@@ -312,6 +312,7 @@
       "baseURL": "Base URL",
       "model": "Default Model",
       "modelPlaceholder": "Enter model name...",
+      "modelListError": "Unable to load models. Check the provider settings and try again.",
       "noModelsFound": "No models found. Enter a model name manually below."
     },
     "appearance": {

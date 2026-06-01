@@ -1,17 +1,40 @@
 import { NextRequest } from 'next/server';
 import { extractAIConfig } from '@/lib/ai/provider';
+import { type ModelListItem } from '@/lib/ai/model-list';
 
 export const dynamic = 'force-dynamic';
+
+function modelListError(message: string, status = 502) {
+  return Response.json({ models: [], error: message }, { status });
+}
+
+async function readProviderError(res: Response) {
+  try {
+    const data = await res.json();
+    const message = data?.error?.message || data?.error || data?.message;
+    if (typeof message === 'string' && message.trim()) {
+      return message.trim();
+    }
+  } catch {
+    // Fall through to status text.
+  }
+  return res.statusText || `HTTP ${res.status}`;
+}
+
+async function providerFetchError(res: Response, provider: string) {
+  const detail = await readProviderError(res);
+  return modelListError(`Unable to fetch ${provider} models: ${detail}`, res.status >= 400 && res.status < 500 ? 400 : 502);
+}
 
 export async function GET(request: NextRequest) {
   const { provider, apiKey, baseURL } = extractAIConfig(request);
 
   if (!apiKey) {
-    return Response.json({ models: [] });
+    return modelListError('API key is required to load models. Configure a local key or server-side AI defaults.', 400);
   }
 
   try {
-    let models: { id: string }[] = [];
+    let models: ModelListItem[] = [];
 
     switch (provider) {
       case 'anthropic': {
@@ -24,7 +47,7 @@ export async function GET(request: NextRequest) {
             'anthropic-version': '2023-06-01',
           },
         });
-        if (!res.ok) return Response.json({ models: [] });
+        if (!res.ok) return providerFetchError(res, provider);
         const data = await res.json();
         models = (data.data ?? []).map((m: { id: string }) => ({ id: m.id }));
         break;
@@ -35,7 +58,7 @@ export async function GET(request: NextRequest) {
           ? `${baseURL.replace(/\/$/, '')}/models?key=${apiKey}`
           : `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
         const res = await fetch(url);
-        if (!res.ok) return Response.json({ models: [] });
+        if (!res.ok) return providerFetchError(res, provider);
         const data = await res.json();
         models = (data.models ?? []).map((m: { name: string }) => ({
           id: m.name.replace(/^models\//, ''),
@@ -49,7 +72,7 @@ export async function GET(request: NextRequest) {
         const res = await fetch(`${effectiveBaseURL}/models`, {
           headers: { Authorization: `Bearer ${apiKey}` },
         });
-        if (!res.ok) return Response.json({ models: [] });
+        if (!res.ok) return providerFetchError(res, provider);
         const data = await res.json();
         models = (data.data ?? data).map((m: { id: string }) => ({ id: m.id }));
         break;
@@ -58,6 +81,6 @@ export async function GET(request: NextRequest) {
 
     return Response.json({ models });
   } catch {
-    return Response.json({ models: [] });
+    return modelListError('Unable to fetch models. Check the provider, base URL, and API key settings.');
   }
 }

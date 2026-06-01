@@ -15,9 +15,15 @@ export interface AIConfig {
 export function extractAIConfig(request: NextRequest): AIConfig {
   const requestedProvider = normalizeAIProvider(request.headers.get('x-provider'));
   const serverConfig = getServerAIConfig(requestedProvider);
+  const suppliedApiKey = request.headers.get('x-api-key')?.trim() || '';
+
+  if (!suppliedApiKey && serverConfig) {
+    return serverConfig;
+  }
+
   const provider = requestedProvider || serverConfig?.provider || DEFAULT_AI_PROVIDER;
   const defaults = AI_PROVIDER_DEFAULTS[provider];
-  const apiKey = request.headers.get('x-api-key') || serverConfig?.apiKey || '';
+  const apiKey = suppliedApiKey || serverConfig?.apiKey || '';
   const baseURL = request.headers.get('x-base-url') || serverConfig?.baseURL || defaults.baseURL;
   const model = request.headers.get('x-model') || serverConfig?.model || defaults.model;
   return { provider, apiKey, baseURL, model };

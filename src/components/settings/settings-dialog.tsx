@@ -33,6 +33,7 @@ import { usePathname, useRouter } from '@/i18n/routing';
 import { locales, localeNames } from '@/i18n/config';
 import { cn } from '@/lib/utils';
 import { useRuntimeConfig } from '@/components/providers/runtime-config-provider';
+import { getModelListFetchError, readModelListResponse } from '@/lib/ai/model-list';
 
 const AI_PROVIDERS: { value: AIProvider; label: string }[] = [
   { value: 'openai', label: 'OpenAI' },
@@ -64,6 +65,7 @@ export function SettingsDialog() {
     setAutoSaveInterval,
     hydrate,
     _hydrated,
+    settingsSyncError,
   } = useSettingsStore();
 
   const startTour = useTourStore((s) => s.startTour);
@@ -76,6 +78,7 @@ export function SettingsDialog() {
   const [fetchedModels, setFetchedModels] = useState<string[]>([]);
   const [modelsFetching, setModelsFetching] = useState(false);
   const [modelsFetched, setModelsFetched] = useState(false);
+  const [modelListError, setModelListError] = useState<string | null>(null);
   const modelSearchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -84,34 +87,44 @@ export function SettingsDialog() {
     }
   }, [isOpen, _hydrated, hydrate]);
 
-  // Fetch models when combobox opens or when apiKey/baseURL changes
+  // Fetch models when the combobox opens.
   const fetchModels = useCallback(async () => {
     setModelsFetching(true);
+    setModelListError(null);
     try {
       const res = await fetch('/api/ai/models', { headers: getAIHeaders() });
-      const data = await res.json();
-      const ids = (data.models || []).map((m: { id: string }) => m.id);
+      const data = await readModelListResponse(res, t('ai.modelListError'));
+      const ids = data.models.map((m) => m.id);
       setFetchedModels(ids);
+      setModelListError(data.error ?? null);
       setModelsFetched(true);
-    } catch {
+    } catch (error) {
       setFetchedModels([]);
+      setModelListError(getModelListFetchError(error, t('ai.modelListError')));
       setModelsFetched(true);
     } finally {
       setModelsFetching(false);
     }
-  }, []);
+  }, [t]);
 
-  // Re-fetch models when apiKey or baseURL changes
+  // Re-fetch models when provider credentials or endpoint changes
+  const prevProviderRef = useRef(aiProvider);
   const prevKeyRef = useRef(aiApiKey);
   const prevUrlRef = useRef(aiBaseURL);
   useEffect(() => {
-    if (prevKeyRef.current !== aiApiKey || prevUrlRef.current !== aiBaseURL) {
+    if (
+      prevProviderRef.current !== aiProvider ||
+      prevKeyRef.current !== aiApiKey ||
+      prevUrlRef.current !== aiBaseURL
+    ) {
+      prevProviderRef.current = aiProvider;
       prevKeyRef.current = aiApiKey;
       prevUrlRef.current = aiBaseURL;
       setModelsFetched(false);
       setFetchedModels([]);
+      setModelListError(null);
     }
-  }, [aiApiKey, aiBaseURL]);
+  }, [aiProvider, aiApiKey, aiBaseURL]);
 
   useEffect(() => {
     if (modelOpen && !modelsFetched && !modelsFetching) {
@@ -170,6 +183,12 @@ export function SettingsDialog() {
 
           {/* AI Configuration Tab */}
           <TabsContent value="ai" className="px-6 pb-6 pt-4 space-y-5">
+            {settingsSyncError && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300" role="alert">
+                {settingsSyncError}
+              </div>
+            )}
+
             {/* Provider */}
             <div className="space-y-2">
               <Label>{t('ai.provider')}</Label>
@@ -261,7 +280,13 @@ export function SettingsDialog() {
                       </div>
                     )}
 
-                    {!modelsFetching && filteredModels.length === 0 && modelsFetched && (
+                    {!modelsFetching && modelListError && modelsFetched && (
+                      <div className="px-2 py-3 text-center text-xs text-red-500" role="alert">
+                        {modelListError}
+                      </div>
+                    )}
+
+                    {!modelsFetching && !modelListError && filteredModels.length === 0 && modelsFetched && (
                       <div className="py-3 text-center text-xs text-zinc-400">
                         {t('ai.noModelsFound')}
                       </div>

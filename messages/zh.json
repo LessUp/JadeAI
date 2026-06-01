@@ -312,6 +312,7 @@
       "baseURL": "API 地址",
       "model": "默认模型",
       "modelPlaceholder": "输入模型名称...",
+      "modelListError": "无法加载模型列表，请检查模型服务商设置后重试。",
       "noModelsFound": "未找到模型，请在下方手动输入模型名称。"
     },
     "appearance": {
