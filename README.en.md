@@ -172,6 +172,15 @@ DB_TYPE=postgresql
 DATABASE_URL=postgresql://user:pass@host:5432/jadeai
 ```
 
+Database selection rules:
+
+| Configuration | Result |
+|---|---|
+| `DB_TYPE=postgresql` + `DATABASE_URL` | Uses PostgreSQL |
+| `DB_TYPE` omitted, but `DATABASE_URL` is set | Uses PostgreSQL and warns to set `DB_TYPE=postgresql` explicitly |
+| `DB_TYPE=sqlite` | Uses SQLite; if `DATABASE_URL` is also set, warns that the URL is ignored |
+| Production without `DB_TYPE` or `DATABASE_URL` | Keeps SQLite for compatibility with existing installs and warns |
+
 ## Common commands
 
 | Command | Description |

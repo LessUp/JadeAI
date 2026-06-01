@@ -183,6 +183,15 @@ DB_TYPE=postgresql
 DATABASE_URL=postgresql://user:pass@host:5432/jadeai
 ```
 
+数据库选择规则：
+
+| 配置 | 结果 |
+|---|---|
+| `DB_TYPE=postgresql` + `DATABASE_URL` | 使用 PostgreSQL |
+| 未设置 `DB_TYPE`，但设置了 `DATABASE_URL` | 使用 PostgreSQL，并输出提示要求显式设置 `DB_TYPE=postgresql` |
+| `DB_TYPE=sqlite` | 使用 SQLite；如同时设置 `DATABASE_URL`，会提示该 URL 被忽略 |
+| 生产环境未设置 `DB_TYPE` 且无 `DATABASE_URL` | 为兼容已有安装继续使用 SQLite，并输出提示 |
+
 ## 常用命令
 
 | 命令 | 说明 |
