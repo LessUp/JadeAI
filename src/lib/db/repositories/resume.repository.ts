@@ -1,4 +1,4 @@
-import { eq, desc, sql, and, inArray } from 'drizzle-orm';
+import { eq, desc, sql, and } from 'drizzle-orm';
 import { db, transaction } from '../index';
 import { resumes, resumeSections } from '../schema';
 import { mergeThemeConfig, type ThemeConfigInput } from '@/lib/resume-theme/theme-config';
@@ -11,24 +11,80 @@ type CreateResumeData = {
   themeConfig?: ThemeConfigInput | null;
 };
 
-type ReplaceResumeDraftSection = {
+type MaybePromise<T> = T | Promise<T>;
+
+type ResumeDraftMetadata = Partial<{
+  title: string;
+  template: string;
+  themeConfig: unknown;
+  language: string;
+}>;
+
+export type ResumeDraftSectionInput = {
   id: string;
   type: string;
   title: string;
   sortOrder: number;
   visible: boolean;
-  content: unknown;
+  content?: unknown;
 };
 
-type ReplaceResumeDraftData = {
-  id: string;
+export type SaveResumeDraftInput = {
   userId: string;
-  title?: string;
-  template?: string;
-  themeConfig?: ThemeConfigInput | null;
-  language?: string;
-  sections?: ReplaceResumeDraftSection[];
+  metadata?: ResumeDraftMetadata;
+  sections?: ResumeDraftSectionInput[];
 };
+
+function isPromiseLike<T>(value: MaybePromise<T>): value is Promise<T> {
+  return !!value && typeof (value as Promise<T>).then === 'function';
+}
+
+function chain<T, U>(value: MaybePromise<T>, next: (value: T) => MaybePromise<U>): MaybePromise<U> {
+  return isPromiseLike(value) ? value.then(next) : next(value);
+}
+
+function sequence<T>(items: T[], run: (item: T) => MaybePromise<unknown>): MaybePromise<void> {
+  let current: MaybePromise<unknown> = undefined;
+  for (const item of items) {
+    current = chain(current, () => run(item));
+  }
+  return chain(current, () => undefined);
+}
+
+function readAll<T = any>(query: any): MaybePromise<T[]> {
+  return typeof query.all === 'function' ? query.all() : query;
+}
+
+function runQuery(query: any): MaybePromise<unknown> {
+  return typeof query.run === 'function' ? query.run() : query;
+}
+
+function compactMetadata(metadata: ResumeDraftMetadata = {}) {
+  return Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== undefined));
+}
+
+function findByIdInExecutor(executor: any, id: string) {
+  return chain(readAll(executor.select().from(resumes).where(eq(resumes.id, id)).limit(1)), (resume: any[]) => {
+    if (!resume[0]) return null;
+    return chain(
+      readAll(executor.select().from(resumeSections).where(eq(resumeSections.resumeId, id)).orderBy(resumeSections.sortOrder)),
+      (sections: any[]) => ({ ...resume[0], sections }),
+    );
+  });
+}
+
+function findByIdForUserInExecutor(executor: any, id: string, userId: string) {
+  return chain(
+    readAll(executor.select().from(resumes).where(and(eq(resumes.id, id), eq(resumes.userId, userId))).limit(1)),
+    (resume: any[]) => {
+      if (!resume[0]) return null;
+      return chain(
+        readAll(executor.select().from(resumeSections).where(eq(resumeSections.resumeId, id)).orderBy(resumeSections.sortOrder)),
+        (sections: any[]) => ({ ...resume[0], sections }),
+      );
+    },
+  );
+}
 
 export const resumeRepository = {
   async findAllByUserId(userId: string) {
@@ -36,25 +92,102 @@ export const resumeRepository = {
   },
 
   async findById(id: string) {
-    const resume = await db.select().from(resumes).where(eq(resumes.id, id)).limit(1);
-    if (!resume[0]) return null;
-    const sections = await db.select().from(resumeSections).where(eq(resumeSections.resumeId, id)).orderBy(resumeSections.sortOrder);
-    return { ...resume[0], sections };
+    return findByIdInExecutor(db, id);
   },
 
   async findByIdForUser(id: string, userId: string) {
-    const resume = await db
-      .select()
-      .from(resumes)
-      .where(and(eq(resumes.id, id), eq(resumes.userId, userId)))
-      .limit(1);
-    if (!resume[0]) return null;
-    const sections = await db
-      .select()
-      .from(resumeSections)
-      .where(eq(resumeSections.resumeId, id))
-      .orderBy(resumeSections.sortOrder);
-    return { ...resume[0], sections };
+    return findByIdForUserInExecutor(db, id, userId);
+  },
+
+  async saveDraft(id: string, data: SaveResumeDraftInput) {
+    return transaction((tx) =>
+      chain(findByIdForUserInExecutor(tx, id, data.userId), (resume: any) => {
+        if (!resume) return null;
+
+        const metadata = compactMetadata(data.metadata);
+        const updateMetadata =
+          Object.keys(metadata).length > 0
+            ? runQuery(
+                tx
+                  .update(resumes)
+                  .set({ ...metadata, updatedAt: new Date() } as any)
+                  .where(and(eq(resumes.id, id), eq(resumes.userId, data.userId))),
+              )
+            : undefined;
+
+        return chain(updateMetadata, () => {
+          if (!data.sections) {
+            return findByIdForUserInExecutor(tx, id, data.userId);
+          }
+
+          const existingSections = resume.sections as { id: string }[];
+          const incomingSections = data.sections;
+          const existingIds = new Set(existingSections.map((section) => section.id));
+          const incomingIds = new Set(incomingSections.map((section) => section.id));
+          const removedSections = existingSections.filter((section) => !incomingIds.has(section.id));
+
+          return chain(
+            sequence(removedSections, (section) =>
+              runQuery(tx.delete(resumeSections).where(and(eq(resumeSections.id, section.id), eq(resumeSections.resumeId, id)))),
+            ),
+            () =>
+              chain(
+                sequence(incomingSections, (section) => {
+                  if (existingIds.has(section.id)) {
+                    return runQuery(
+                      tx
+                        .update(resumeSections)
+                        .set({
+                          title: section.title,
+                          sortOrder: section.sortOrder,
+                          visible: section.visible,
+                          content: section.content,
+                          updatedAt: new Date(),
+                        } as any)
+                        .where(and(eq(resumeSections.id, section.id), eq(resumeSections.resumeId, id))),
+                    );
+                  }
+
+                  return runQuery(
+                    tx.insert(resumeSections).values({
+                      id: section.id,
+                      resumeId: id,
+                      type: section.type,
+                      title: section.title,
+                      sortOrder: section.sortOrder,
+                      visible: section.visible,
+                      content: section.content || {},
+                    } as any),
+                  );
+                }),
+                () => findByIdForUserInExecutor(tx, id, data.userId),
+              ),
+          );
+        });
+      }),
+    );
+  },
+
+
+  async replaceDraftForUser(data: {
+    id: string;
+    userId: string;
+    title?: string;
+    template?: string;
+    themeConfig?: ThemeConfigInput | null;
+    language?: string;
+    sections?: ResumeDraftSectionInput[];
+  }) {
+    return this.saveDraft(data.id, {
+      userId: data.userId,
+      metadata: {
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.template !== undefined ? { template: data.template } : {}),
+        ...(data.themeConfig !== undefined ? { themeConfig: data.themeConfig } : {}),
+        ...(data.language !== undefined ? { language: data.language } : {}),
+      },
+      sections: data.sections,
+    });
   },
 
   async create(data: CreateResumeData) {
@@ -82,75 +215,6 @@ export const resumeRepository = {
     };
     await db.update(resumes).set(updateData as any).where(eq(resumes.id, id));
     return this.findById(id);
-  },
-
-  async replaceDraftForUser(data: ReplaceResumeDraftData) {
-    await transaction(async (tx) => {
-      const ownedResume = await tx
-        .select({ id: resumes.id })
-        .from(resumes)
-        .where(and(eq(resumes.id, data.id), eq(resumes.userId, data.userId)))
-        .limit(1);
-      if (!ownedResume[0]) {
-        throw new Error('Resume not found');
-      }
-
-      const updateData: Record<string, unknown> = {};
-      if (data.title !== undefined) updateData.title = data.title;
-      if (data.template !== undefined) updateData.template = data.template;
-      if (data.language !== undefined) updateData.language = data.language;
-      if (data.themeConfig !== undefined) updateData.themeConfig = mergeThemeConfig(data.themeConfig);
-      if (Object.keys(updateData).length > 0) {
-        await tx.update(resumes).set({ ...updateData, updatedAt: new Date() } as any).where(eq(resumes.id, data.id));
-      }
-
-      if (!Array.isArray(data.sections)) {
-        return;
-      }
-
-      const existingSections = await tx
-        .select({ id: resumeSections.id })
-        .from(resumeSections)
-        .where(eq(resumeSections.resumeId, data.id));
-      const existingIds = new Set(existingSections.map((section: { id: string }) => section.id));
-      const incomingIds = new Set(data.sections.map((section) => section.id));
-      const removedIds = existingSections
-        .map((section: { id: string }) => section.id)
-        .filter((id: string) => !incomingIds.has(id));
-
-      if (removedIds.length > 0) {
-        await tx
-          .delete(resumeSections)
-          .where(and(eq(resumeSections.resumeId, data.id), inArray(resumeSections.id, removedIds)));
-      }
-
-      for (const section of data.sections) {
-        if (existingIds.has(section.id)) {
-          await tx
-            .update(resumeSections)
-            .set({
-              title: section.title,
-              sortOrder: section.sortOrder,
-              visible: section.visible,
-              content: section.content,
-              updatedAt: new Date(),
-            } as any)
-            .where(and(eq(resumeSections.id, section.id), eq(resumeSections.resumeId, data.id)));
-        } else {
-          await tx.insert(resumeSections).values({
-            id: section.id,
-            resumeId: data.id,
-            type: section.type,
-            title: section.title,
-            sortOrder: section.sortOrder,
-            visible: section.visible,
-            content: section.content,
-          } as any);
-        }
-      }
-    });
-
-    return this.findById(data.id);
   },
 
   async delete(id: string) {

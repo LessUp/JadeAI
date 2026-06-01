@@ -35,7 +35,6 @@ function isConcurrentSeedError(error: unknown): boolean {
 export class SQLiteAdapter implements DatabaseAdapter {
   db;
   private sqlite: Database.Database;
-  private transactionChain: Promise<void> = Promise.resolve();
 
   constructor(path: string) {
     mkdirSync(dirname(path), { recursive: true });
@@ -75,24 +74,15 @@ export class SQLiteAdapter implements DatabaseAdapter {
   }
 
   async transaction<T>(callback: TransactionCallback<T>): Promise<T> {
-    const runTransaction = async (): Promise<T> => {
-      this.sqlite.exec('BEGIN IMMEDIATE');
-      try {
-        const result = await callback(this.db);
-        this.sqlite.exec('COMMIT');
-        return result;
-      } catch (error) {
-        this.sqlite.exec('ROLLBACK');
-        throw error;
-      }
-    };
+    return this.db.transaction((tx) => {
+      const result = callback(tx);
 
-    const queued = this.transactionChain.then(runTransaction, runTransaction);
-    this.transactionChain = queued.then(
-      () => undefined,
-      () => undefined,
-    );
-    return queued;
+      if (result && typeof (result as Promise<T>).then === 'function') {
+        throw new Error('SQLite transactions require synchronous callbacks');
+      }
+
+      return result as T;
+    });
   }
 
   async close(): Promise<void> {

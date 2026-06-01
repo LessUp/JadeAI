@@ -35,28 +35,21 @@ test('SQLite transaction rolls back when callback throws', async () => {
   }
 });
 
-test('SQLite transaction seam supports async callbacks with rollback semantics', async () => {
+test('SQLite transaction seam rejects async callbacks before commit', async () => {
   const adapter = new SQLiteAdapter(':memory:');
 
   try {
     adapter.db.run(sql`CREATE TABLE __transaction_probe (id text PRIMARY KEY)`);
 
-    await adapter.transaction(async (tx) => {
-      tx.run(sql`INSERT INTO __transaction_probe (id) VALUES ('committed')`);
-      await Promise.resolve();
-    });
-
     await assert.rejects(
       adapter.transaction(async (tx) => {
         tx.run(sql`INSERT INTO __transaction_probe (id) VALUES ('rolled-back')`);
-        await Promise.resolve();
-        throw new Error('force rollback async');
       }),
-      /force rollback async/,
+      /SQLite transactions require synchronous callbacks/,
     );
 
     const row = adapter.db.get(sql`SELECT count(*) AS count FROM __transaction_probe`) as { count: number };
-    assert.equal(Number(row.count), 1);
+    assert.equal(Number(row.count), 0);
   } finally {
     await adapter.close();
   }
