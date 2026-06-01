@@ -1,6 +1,33 @@
-import { eq, desc, and, lt } from 'drizzle-orm';
+import { eq, desc, and, lt, or, asc } from 'drizzle-orm';
 import { db } from '../index';
 import { chatSessions, chatMessages, resumes } from '../schema';
+
+const CURSOR_SEPARATOR = '|';
+
+function toDate(value: Date | string | number): Date {
+  if (value instanceof Date) return value;
+  if (typeof value === 'number') {
+    // Handle epoch seconds and epoch milliseconds.
+    const millis = value >= 1_000_000_000_000 ? value : value * 1000;
+    return new Date(millis);
+  }
+  return new Date(value);
+}
+
+function encodeCursor(createdAt: Date | string | number, id: string): string {
+  return `${toDate(createdAt).toISOString()}${CURSOR_SEPARATOR}${id}`;
+}
+
+function decodeCursor(cursor: string): { createdAt: Date; id?: string } {
+  const [createdAtRaw, id] = cursor.includes(CURSOR_SEPARATOR)
+    ? cursor.split(CURSOR_SEPARATOR, 2)
+    : [cursor, undefined];
+  const createdAt = new Date(createdAtRaw);
+  if (Number.isNaN(createdAt.getTime())) {
+    throw new Error('Invalid pagination cursor');
+  }
+  return { createdAt, id };
+}
 
 export const chatRepository = {
   async findSessionsByResumeId(resumeId: string) {
@@ -47,24 +74,26 @@ export const chatRepository = {
   async findPaginatedMessages(sessionId: string, opts: { cursor?: string; limit?: number } = {}) {
     const limit = Math.min(opts.limit ?? 20, 50);
     const fetchCount = limit + 1;
+    const cursor = opts.cursor ? decodeCursor(opts.cursor) : undefined;
 
-    let rows;
-    if (opts.cursor) {
-      const cursorDate = new Date(opts.cursor);
-      rows = await db
-        .select()
-        .from(chatMessages)
-        .where(and(eq(chatMessages.sessionId, sessionId), lt(chatMessages.createdAt, cursorDate)))
-        .orderBy(desc(chatMessages.createdAt))
-        .limit(fetchCount);
-    } else {
-      rows = await db
-        .select()
-        .from(chatMessages)
-        .where(eq(chatMessages.sessionId, sessionId))
-        .orderBy(desc(chatMessages.createdAt))
-        .limit(fetchCount);
-    }
+    const whereClause = cursor
+      ? and(
+        eq(chatMessages.sessionId, sessionId),
+        cursor.id
+          ? or(
+            lt(chatMessages.createdAt, cursor.createdAt),
+            and(eq(chatMessages.createdAt, cursor.createdAt), lt(chatMessages.id, cursor.id)),
+          )
+          : lt(chatMessages.createdAt, cursor.createdAt),
+      )
+      : eq(chatMessages.sessionId, sessionId);
+
+    let rows = await db
+      .select()
+      .from(chatMessages)
+      .where(whereClause)
+      .orderBy(desc(chatMessages.createdAt), desc(chatMessages.id))
+      .limit(fetchCount);
 
     const hasMore = rows.length > limit;
     if (hasMore) rows = rows.slice(0, limit);
@@ -73,7 +102,7 @@ export const chatRepository = {
     rows.reverse();
 
     const nextCursor = hasMore && rows.length > 0
-      ? (rows[0].createdAt instanceof Date ? rows[0].createdAt.toISOString() : new Date(rows[0].createdAt as number).toISOString())
+      ? encodeCursor(rows[0].createdAt as Date | string | number, rows[0].id)
       : undefined;
 
     return { messages: rows, hasMore, nextCursor };
@@ -88,7 +117,11 @@ export const chatRepository = {
   async findSessionWithMessages(sessionId: string) {
     const session = await db.select().from(chatSessions).where(eq(chatSessions.id, sessionId)).limit(1);
     if (!session[0]) return null;
-    const messages = await db.select().from(chatMessages).where(eq(chatMessages.sessionId, sessionId)).orderBy(chatMessages.createdAt);
+    const messages = await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.sessionId, sessionId))
+      .orderBy(asc(chatMessages.createdAt), asc(chatMessages.id));
     return { ...session[0], messages };
   },
 
@@ -99,7 +132,7 @@ export const chatRepository = {
       .select()
       .from(chatMessages)
       .where(eq(chatMessages.sessionId, sessionId))
-      .orderBy(chatMessages.createdAt);
+      .orderBy(asc(chatMessages.createdAt), asc(chatMessages.id));
     return { ...session, messages };
   },
 
