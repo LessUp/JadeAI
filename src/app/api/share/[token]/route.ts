@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { shareRepository } from '@/lib/db/repositories/share.repository';
 import { hashPassword } from '@/lib/utils/share';
+import { serializePublicResume } from '@/lib/share/public-resume';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,6 @@ export async function GET(
     // 1. Try new resume_shares table first
     const share = await shareRepository.findByToken(token);
     if (share) {
-      console.log('[share/token] found in resumeShares, isActive:', share.isActive, typeof share.isActive);
       if (!share.isActive) {
         return NextResponse.json({ error: 'This share link has been disabled' }, { status: 403 });
       }
@@ -44,8 +44,7 @@ export async function GET(
         return NextResponse.json({ error: 'Not found' }, { status: 404 });
       }
 
-      const { userId, sharePassword, ...publicResume } = resume;
-      return NextResponse.json(publicResume);
+      return NextResponse.json(serializePublicResume(resume));
     }
 
     // 2. Fallback to legacy resumes.shareToken
@@ -76,8 +75,7 @@ export async function GET(
 
     await resumeRepository.incrementViewCount(resume.id);
 
-    const { userId, sharePassword, ...publicResume } = resume;
-    return NextResponse.json(publicResume);
+    return NextResponse.json(serializePublicResume(resume));
   } catch (error) {
     console.error('GET /api/share/[token] error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
