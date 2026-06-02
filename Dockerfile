@@ -1,11 +1,12 @@
 # syntax=docker/dockerfile:1.7
 
 FROM node:22-bookworm-slim AS base
-ARG DEBIAN_MIRROR=http://mirrors.tuna.tsinghua.edu.cn/debian
-ARG DEBIAN_SECURITY_MIRROR=http://mirrors.tuna.tsinghua.edu.cn/debian-security
+ARG DEBIAN_MIRROR=http://mirrors.aliyun.com/debian
+ARG DEBIAN_SECURITY_MIRROR=http://mirrors.aliyun.com/debian-security
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
-    NEXT_TELEMETRY_DISABLED=1
+    NEXT_TELEMETRY_DISABLED=1 \
+    NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
 RUN set -eux; \
     printf '%s\n' \
       'Acquire::Retries "5";' \
@@ -22,7 +23,7 @@ RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends ca-certificates; \
     rm -rf /var/lib/apt/lists/*
-RUN corepack enable
+RUN corepack enable && corepack prepare pnpm@11.0.9 --activate
 
 # --- Dependencies ---
 FROM base AS deps
