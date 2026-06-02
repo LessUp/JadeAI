@@ -124,7 +124,42 @@ DEBIAN_SECURITY_MIRROR=http://mirrors.tuna.tsinghua.edu.cn/debian-security \
 pnpm docker:build
 ```
 
-`docker:run` 与 `docker:publish` 也支持同样的 `DEBIAN_MIRROR` / `DEBIAN_SECURITY_MIRROR` 环境变量；Dockerfile 同时内置了 apt 下载重试与超时设置，并默认使用中国大陆镜像。
+如果你的网络对国际站点“可访问但不稳定”，建议直接在构建时启用代理（脚本已支持透传大小写两套代理变量）：
+
+```bash
+HTTP_PROXY=http://127.0.0.1:7890 \
+HTTPS_PROXY=http://127.0.0.1:7890 \
+NO_PROXY=127.0.0.1,localhost \
+pnpm docker:build
+```
+
+如果你使用的是本机 SOCKS5 代理（例如 `socks5://127.0.0.1:10808`），可以直接这样传入，脚本会自动改写为容器可访问地址（`host.docker.internal`）并自动注入 `--add-host host.docker.internal:host-gateway`：
+
+```bash
+HTTP_PROXY=socks5://127.0.0.1:10808 \
+HTTPS_PROXY=socks5://127.0.0.1:10808 \
+NO_PROXY=127.0.0.1,localhost \
+pnpm docker:build
+```
+
+如果仍然会在大包（如 `chromium` / `fonts-noto-cjk`）阶段失败，可临时跳过系统 Chromium 安装，让镜像先构建成功（仅建议排障时使用，不建议作为生产默认方案）：
+
+```bash
+INSTALL_CHROMIUM=false \
+INSTALL_CJK_FONTS=false \
+ALLOW_CHROMIUM_DOWNLOAD=true \
+pnpm docker:build
+```
+
+以上参数含义：
+
+- `INSTALL_CHROMIUM=false`：跳过 `apt install chromium`
+- `INSTALL_CJK_FONTS=false`：跳过 `fonts-noto-cjk`（会影响 CJK PDF 字体完整性）
+- `ALLOW_CHROMIUM_DOWNLOAD=true`：运行时允许回退到 bundled Chromium 下载
+
+`docker:run`、`docker:publish`、`docker:smoke` 同样支持 `DEBIAN_MIRROR` / `DEBIAN_SECURITY_MIRROR`、代理变量（`HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` 与小写形式）以及上述 3 个开关；Dockerfile 也内置了更激进的 apt 重试与超时配置。
+
+默认值是 `INSTALL_CHROMIUM=true`、`INSTALL_CJK_FONTS=true`、`ALLOW_CHROMIUM_DOWNLOAD=false`，即默认优先构建期安装系统 Chromium，不依赖运行时首次下载。
 
 如果你想改为宿主机目录持久化数据库：
 

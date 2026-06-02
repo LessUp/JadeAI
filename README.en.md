@@ -123,7 +123,42 @@ DEBIAN_SECURITY_MIRROR=http://mirrors.tuna.tsinghua.edu.cn/debian-security \
 pnpm docker:build
 ```
 
-`docker:run` and `docker:publish` accept the same `DEBIAN_MIRROR` / `DEBIAN_SECURITY_MIRROR` environment variables. The Dockerfile also configures apt retries/timeouts and now defaults to a mainland China mirror.
+If your environment can reach international networks but is unstable, prefer building with a proxy (the scripts now forward both uppercase and lowercase proxy variables):
+
+```bash
+HTTP_PROXY=http://127.0.0.1:7890 \
+HTTPS_PROXY=http://127.0.0.1:7890 \
+NO_PROXY=127.0.0.1,localhost \
+pnpm docker:build
+```
+
+If you use a local SOCKS5 proxy (for example `socks5://127.0.0.1:10808`), you can pass it directly. The scripts will automatically rewrite it to a container-reachable endpoint (`host.docker.internal`) and add `--add-host host.docker.internal:host-gateway`:
+
+```bash
+HTTP_PROXY=socks5://127.0.0.1:10808 \
+HTTPS_PROXY=socks5://127.0.0.1:10808 \
+NO_PROXY=127.0.0.1,localhost \
+pnpm docker:build
+```
+
+If large package downloads (such as `chromium` / `fonts-noto-cjk`) still fail, you can temporarily skip system Chromium packages so the image can finish building (recommended only for troubleshooting, not as a production default):
+
+```bash
+INSTALL_CHROMIUM=false \
+INSTALL_CJK_FONTS=false \
+ALLOW_CHROMIUM_DOWNLOAD=true \
+pnpm docker:build
+```
+
+Meaning of the switches:
+
+- `INSTALL_CHROMIUM=false`: skip `apt install chromium`
+- `INSTALL_CJK_FONTS=false`: skip `fonts-noto-cjk` (CJK PDF rendering quality may be reduced)
+- `ALLOW_CHROMIUM_DOWNLOAD=true`: allow runtime fallback to bundled Chromium download
+
+`docker:run`, `docker:publish`, and `docker:smoke` accept the same mirror variables, proxy variables (`HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` and lowercase forms), and these three switches. The Dockerfile now also uses more aggressive apt retry/timeout settings.
+
+Defaults are `INSTALL_CHROMIUM=true`, `INSTALL_CJK_FONTS=true`, and `ALLOW_CHROMIUM_DOWNLOAD=false`, so production builds prefer install-time system Chromium instead of runtime first-download behavior.
 
 If you prefer a host bind mount for the database:
 
