@@ -11,6 +11,12 @@ import {
   syncResumeFromServer,
 } from '@/lib/editor/resume-history-actions';
 import { countCompletedToolParts, getNextToolResultReloadState } from '@/lib/ai/chat-stream-state';
+import { ensureResumeStoreSyncedBeforeAI } from '@/lib/ai/resume-sync-guard';
+import {
+  EMPTY_ASSISTANT_RESPONSE_ERROR_TEXT,
+  hasRenderableAssistantReplySinceRequest,
+  hasRenderableUIAssistantMessage,
+} from '@/lib/ai/chat-response-status';
 
 interface UseAIChatOptions {
   resumeId: string;
@@ -37,8 +43,12 @@ function getMessageText(message?: AIChatUIMessage) {
 }
 
 function getLatestAssistantText(messages: AIChatUIMessage[]) {
-  const latestAssistantMessage = [...messages].reverse().find((message) => message.role === 'assistant');
+  const latestAssistantMessage = getLatestAssistantMessage(messages);
   return getMessageText(latestAssistantMessage);
+}
+
+function getLatestAssistantMessage(messages: AIChatUIMessage[]) {
+  return [...messages].reverse().find((message) => message.role === 'assistant');
 }
 
 export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel }: UseAIChatOptions) {
@@ -47,6 +57,9 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
   const [lastTerminalStatus, setLastTerminalStatus] = useState<AIChatStatus | undefined>();
   const [terminalSessionId, setTerminalSessionId] = useState<string | undefined>();
   const [streamStartedAt, setStreamStartedAt] = useState<number | undefined>();
+  const [preflightError, setPreflightError] = useState<Error | null>(null);
+  const [requestBaselineAssistantId, setRequestBaselineAssistantId] = useState<string | undefined>();
+  const [requestBaselineAssistantWasRenderable, setRequestBaselineAssistantWasRenderable] = useState(false);
 
   const transport = useMemo(
     () =>
@@ -63,14 +76,29 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
     [resumeId, selectedModel, sessionId]
   );
 
-  const { messages, sendMessage, status, error, setMessages, stop, clearError } = useChat<AIChatUIMessage>({
+  const { messages, sendMessage: rawSendMessage, status, error, setMessages, stop, clearError } = useChat<AIChatUIMessage>({
     id: sessionId,
     transport,
   });
 
+  const latestAssistantMessage = getLatestAssistantMessage(messages);
+  const hasRenderableAssistantReply = hasRenderableAssistantReplySinceRequest(
+    latestAssistantMessage,
+    requestBaselineAssistantId,
+    requestBaselineAssistantWasRenderable
+  );
+  const emptyResponseError = useMemo(() => {
+    if (terminalSessionId !== sessionId) return null;
+    if (status !== 'ready') return null;
+    if (lastTerminalStatus) return null;
+    if (hasRenderableAssistantReply) return null;
+    return new Error(EMPTY_ASSISTANT_RESPONSE_ERROR_TEXT);
+  }, [hasRenderableAssistantReply, lastTerminalStatus, sessionId, status, terminalSessionId]);
+
   const isLoading = status === 'streaming' || status === 'submitted';
   const terminalStatus = terminalSessionId === sessionId
-    ? lastTerminalStatus || (status === 'error' ? 'error' : status === 'ready' && terminalSessionId ? 'completed' : undefined)
+    ? lastTerminalStatus
+      || (status === 'error' || Boolean(emptyResponseError) ? 'error' : status === 'ready' && terminalSessionId ? 'completed' : undefined)
     : undefined;
 
   // Track completed tool call count to detect new tool results
@@ -85,11 +113,24 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
   }, []);
 
   const sendChatMessage = useCallback(
-    (...args: Parameters<typeof sendMessage>) => {
+    async (...args: Parameters<typeof rawSendMessage>) => {
+      try {
+        await ensureResumeStoreSyncedBeforeAI();
+        setPreflightError(null);
+      } catch (syncError) {
+        const typedError = syncError instanceof Error
+          ? syncError
+          : new Error('Failed to sync the latest resume before sending AI request.');
+        setPreflightError(typedError);
+        throw typedError;
+      }
+      const baselineAssistantMessage = getLatestAssistantMessage(messages);
+      setRequestBaselineAssistantId(baselineAssistantMessage?.id);
+      setRequestBaselineAssistantWasRenderable(hasRenderableUIAssistantMessage(baselineAssistantMessage));
       startStreamActivity();
-      return sendMessage(...args);
+      return rawSendMessage(...args);
     },
-    [sendMessage, startStreamActivity]
+    [messages, rawSendMessage, startStreamActivity]
   );
 
   const reloadResume = useCallback(async () => {
@@ -172,11 +213,17 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
     }
 
     clearError();
+    setPreflightError(null);
     setTerminalSessionId(sessionId);
     setLastTerminalStatus(undefined);
-    sendChatMessage({ text: input });
+    void sendChatMessage({ text: input }).catch((sendError) => {
+      console.error('Failed to send AI message:', sendError);
+      resetStreamActivity();
+      setTerminalSessionId(sessionId);
+      setLastTerminalStatus('error');
+    });
     setInput('');
-  }, [clearError, input, localMessages, sendChatMessage, sessionId]);
+  }, [clearError, input, localMessages, resetStreamActivity, sendChatMessage, sessionId]);
 
   const latestAssistantText = getLatestAssistantText(messages);
 
@@ -189,6 +236,9 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
   const clearMessages = useCallback(() => {
     setMessages([]);
     setLocalMessages([]);
+    setPreflightError(null);
+    setRequestBaselineAssistantId(undefined);
+    setRequestBaselineAssistantWasRenderable(false);
     setTerminalSessionId(undefined);
     setLastTerminalStatus(undefined);
     resetStreamActivity();
@@ -202,6 +252,8 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
   }, [resetStreamActivity, sessionId, stop]);
 
   const resetTerminalState = useCallback(() => {
+    setRequestBaselineAssistantId(undefined);
+    setRequestBaselineAssistantWasRenderable(false);
     setTerminalSessionId(undefined);
     setLastTerminalStatus(undefined);
     resetStreamActivity();
@@ -214,7 +266,7 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
     handleSubmit,
     isLoading,
     status,
-    error,
+    error: preflightError ?? emptyResponseError ?? error,
     streamActivity: { startedAt: streamStartedAt, hasReceivedToken: latestAssistantText.length > 0 },
     lastTerminalStatus: terminalStatus,
     clearMessages,

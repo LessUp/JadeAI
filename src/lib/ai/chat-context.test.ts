@@ -307,6 +307,50 @@ test('resumed history preserves tool error state instead of fabricating success'
   assert.equal(toolPart.output, undefined);
 });
 
+test('chat context excludes failed tool outputs from retry context', async () => {
+  const resumedMessages = dbMessagesToUIMessages([
+    {
+      id: 'user-1',
+      role: 'user',
+      content: 'Please update my summary',
+      createdAt: Date.now(),
+    },
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: '',
+      metadata: {
+        status: 'error',
+        errorText: 'Bad Request',
+        orderedParts: [
+          { type: 'step-start' },
+          {
+            type: 'tool',
+            toolName: 'updateSection',
+            state: 'output-error',
+            args: { sectionId: 'summary', field: 'text', value: 'improved text' },
+            errorText: 'Bad Request',
+          },
+        ],
+      },
+      createdAt: Date.now(),
+    },
+    {
+      id: 'user-2',
+      role: 'user',
+      content: 'retry',
+      createdAt: Date.now(),
+    },
+  ]);
+
+  const modelMessages = await buildChatContextMessages(resumedMessages);
+
+  assert.deepEqual(
+    modelMessages.map((message) => message.role),
+    ['user', 'user']
+  );
+});
+
 test('resumed pending assistant metadata survives even without text parts', () => {
   const resumedMessages = dbMessagesToUIMessages([
     {
@@ -329,4 +373,31 @@ test('resumed pending assistant metadata survives even without text parts', () =
   assert.equal(assistantMessage.metadata?.status, 'submitted');
   assert.equal(assistantMessage.metadata?.startedAt, 1234567890);
   assert.deepEqual(assistantMessage.parts, []);
+});
+
+test('chat context drops assistant messages that only contain empty text parts', async () => {
+  const messages: UIMessage[] = [
+    {
+      id: 'user-1',
+      role: 'user',
+      parts: [{ type: 'text', text: 'Analyze this resume.' }],
+    },
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      parts: [{ type: 'text', text: '' }],
+    },
+    {
+      id: 'user-2',
+      role: 'user',
+      parts: [{ type: 'text', text: 'Continue with next question.' }],
+    },
+  ];
+
+  const modelMessages = await buildChatContextMessages(messages);
+
+  assert.deepEqual(
+    modelMessages.map((message) => message.role),
+    ['user', 'user']
+  );
 });

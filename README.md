@@ -114,9 +114,9 @@ pnpm docker:smoke
 
 该命令会构建镜像、使用临时 Docker volume 启动容器，并检查应用可访问、SQLite 数据库已创建、Chromium 可执行以及 `/api/ai/models` API 可达。它不会并入 `pnpm release:check`，因此不会拖慢常规发布检查。
 
-镜像现在基于 Debian slim 构建，而不是 Alpine，这样安装 Chromium 与 CJK 字体时不会再依赖 `apk`，能规避部分代理环境下的 TLS / 超时问题。
+镜像现在基于 Debian slim 构建，而不是 Alpine，这样安装 Chromium 与 CJK / Emoji 字体时不会再依赖 `apk`，能规避部分代理环境下的 TLS / 超时问题。
 
-如果你在中国大陆构建时遇到 `apt-get install chromium fonts-noto-cjk` 下载中断、`unexpected EOF` 或 `Connection failed`，可以显式指定 Debian 镜像源：
+如果你在中国大陆构建时遇到 `apt-get install chromium fonts-noto-cjk fonts-noto-color-emoji` 下载中断、`unexpected EOF` 或 `Connection failed`，可以显式指定 Debian 镜像源：
 
 ```bash
 DEBIAN_MIRROR=http://mirrors.tuna.tsinghua.edu.cn/debian \

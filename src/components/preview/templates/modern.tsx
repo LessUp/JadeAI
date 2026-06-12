@@ -221,7 +221,7 @@ function ModernSectionContent({ section, lang }: { section: any; lang?: string }
               {item.language} <span className="text-zinc-400">— {item.proficiency}</span>
             </span>
             {description && (
-              <p className="w-full text-xs leading-5 text-zinc-500">{description}</p>
+              <p className="w-full text-sm leading-relaxed text-zinc-600">{description}</p>
             )}
           </div>
         )})}

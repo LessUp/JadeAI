@@ -104,6 +104,10 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Build-time page data collection can initialize DB from multiple workers.
+# Use in-memory SQLite here to avoid file-lock contention during image build.
+ENV DB_TYPE=sqlite \
+    SQLITE_PATH=:memory:
 RUN pnpm build
 
 # --- Production ---
@@ -162,7 +166,7 @@ RUN set -eux; \
     }; \
     apt_retry_install ca-certificates wget fonts-freefont-ttf; \
     if [ "$INSTALL_CJK_FONTS" = "true" ]; then \
-      apt_retry_install fonts-noto-cjk; \
+      apt_retry_install fonts-noto-cjk fonts-noto-color-emoji; \
     fi; \
     if [ "$INSTALL_CHROMIUM" = "true" ]; then \
       apt_retry_install chromium; \

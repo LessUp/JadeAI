@@ -31,6 +31,16 @@ export function degreeField(degree: string, field: string | undefined): string {
   return `${degree} - ${field}`;
 }
 
+const EMOJI_SEQUENCE_REGEX = /\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*/gu;
+const PDF_EMOJI_FONT_STACK = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", emoji';
+
+function wrapEmojiWithPdfFallbackFont(html: string): string {
+  return html.replace(
+    EMOJI_SEQUENCE_REGEX,
+    (emoji) => `<span style='font-family:${PDF_EMOJI_FONT_STACK};font-style:normal;font-weight:400'>${emoji}</span>`,
+  );
+}
+
 /** Lightweight markdown → HTML for resume text fields (summary, descriptions, highlights).
  *  Supports: **bold**, `code`, line breaks, and "- item" lists. */
 export function md(text: unknown): string {
@@ -43,7 +53,7 @@ export function md(text: unknown): string {
   // 3. Inline code: `text`
   s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
   // 4. No newlines → return inline
-  if (!s.includes('\n')) return s;
+  if (!s.includes('\n')) return wrapEmojiWithPdfFallbackFont(s);
   // 5. Process lines for lists and line breaks
   const lines = s.split('\n');
   let html = '';
@@ -64,7 +74,7 @@ export function md(text: unknown): string {
     }
   }
   if (inList) html += '</ul>';
-  return html;
+  return wrapEmojiWithPdfFallbackFont(html);
 }
 
 // ─── Section empty check ──────────────────────────────────────

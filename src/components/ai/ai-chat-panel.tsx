@@ -11,6 +11,7 @@ import { useSettingsStore, getAIHeaders } from '@/stores/settings-store';
 import { useAIChat } from '@/hooks/use-ai-chat';
 import { useMessagePagination } from '@/hooks/use-message-pagination';
 import type { AIChatErrorKind, AIChatMessageMetadata, AIChatStatus, AIChatUIMessage } from '@/types/ai';
+import { ensureResumeStoreSyncedBeforeAI } from '@/lib/ai/resume-sync-guard';
 import { AIMessage } from './ai-message';
 import { AIInput } from './ai-input';
 
@@ -228,12 +229,19 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
 
   const switchSession = useCallback(async (sessionId: string) => {
     if (sessionId === activeSessionId) return;
+    try {
+      await ensureResumeStoreSyncedBeforeAI();
+    } catch (syncError) {
+      const message = syncError instanceof Error ? syncError.message : t('errorMessage');
+      toast.error(t('errorMessage'), { description: message });
+      return;
+    }
     resetTerminalState();
     setActiveSessionId(sessionId);
     setHistoryOpen(false);
     const msgs = await loadInitial(sessionId);
     setInitialMessages(msgs);
-  }, [activeSessionId, loadInitial, resetTerminalState]);
+  }, [activeSessionId, loadInitial, resetTerminalState, t]);
 
   const deleteSession = useCallback(async (sessionId: string) => {
     const headers = getHeaders();
@@ -282,7 +290,9 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
   const setPendingAiMessage = useEditorStore((s) => s.setPendingAiMessage);
   useEffect(() => {
     if (pendingAiMessage && sessionsLoaded && activeSessionId) {
-      sendMessage({ text: pendingAiMessage });
+      void sendMessage({ text: pendingAiMessage }).catch((sendError) => {
+        console.error('Failed to send pending AI message:', sendError);
+      });
       setPendingAiMessage(null);
     }
   }, [pendingAiMessage, sessionsLoaded, activeSessionId, sendMessage, setPendingAiMessage]);

@@ -113,9 +113,9 @@ pnpm docker:smoke
 
 This builds the image, starts it with a temporary Docker volume, and verifies app reachability, SQLite database creation, Chromium execution, and the `/api/ai/models` API. It is intentionally not part of `pnpm release:check`, so normal release checks stay lightweight.
 
-The image now uses Debian slim instead of Alpine so Chromium and CJK font installation no longer depends on `apk`, which avoids the TLS and timeout failures some proxy setups hit during Docker builds.
+The image now uses Debian slim instead of Alpine so Chromium and CJK/Emoji font installation no longer depends on `apk`, which avoids the TLS and timeout failures some proxy setups hit during Docker builds.
 
-If Docker builds in mainland China fail while downloading `chromium` or `fonts-noto-cjk` with `unexpected EOF` or `Connection failed`, explicitly pass a Debian mirror for the build:
+If Docker builds in mainland China fail while downloading `chromium`, `fonts-noto-cjk`, or `fonts-noto-color-emoji` with `unexpected EOF` or `Connection failed`, explicitly pass a Debian mirror for the build:
 
 ```bash
 DEBIAN_MIRROR=http://mirrors.tuna.tsinghua.edu.cn/debian \

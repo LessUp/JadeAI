@@ -81,6 +81,7 @@ function createResume(template: string): Resume {
 test('modern preview renders language descriptions', () => {
   const html = renderToStaticMarkup(<ModernTemplate resume={createResume('modern')} />);
   assert.match(html, /能熟练阅读英文技术文档与论文/);
+  assert.match(html, /w-full text-sm leading-relaxed text-zinc-600/);
 });
 
 test('modern preview language descriptions are not hard-capped to 320px', () => {
@@ -96,11 +97,28 @@ test('sidebar preview renders language descriptions', () => {
 test('modern HTML export renders language descriptions', () => {
   const html = buildModernHtml(createResume('modern') as any);
   assert.match(html, /能熟练阅读英文技术文档与论文/);
+  assert.match(html, /w-full text-sm leading-relaxed text-zinc-600/);
 });
 
 test('modern HTML export language descriptions are not hard-capped to 320px', () => {
   const html = buildModernHtml(createResume('modern') as any);
   assert.doesNotMatch(html, /max-w-\[320px\]|max-width:320px/);
+});
+
+test('modern HTML export wraps emoji with PDF-safe font fallback', () => {
+  const resume = createResume('modern');
+  const languageSection = resume.sections.find((section) => section.type === 'languages');
+  assert.ok(languageSection);
+  (languageSection.content as any).items[0].description =
+    '📄 https://link.springer.com/article/10.1186/s40246-024-00666-w';
+
+  const html = buildModernHtml(resume as any);
+
+  assert.match(
+    html,
+    /font-family:"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Mozilla", emoji/,
+  );
+  assert.match(html, />📄<\/span>/);
 });
 
 test('sidebar HTML export renders language descriptions', () => {

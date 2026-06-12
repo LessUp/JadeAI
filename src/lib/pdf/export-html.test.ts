@@ -33,8 +33,8 @@ const REQUIRED_PDF_PAGINATION_SNIPPETS = [
 const HTML_REGRESSION_CASES: HtmlRegressionCase[] = [
   {
     fixtureName: 'modern-long-content',
-    expectedLength: 56568,
-    expectedSha256: '671ed7d1b89c6a1951c99b754baef2244d6b2f63d82e3bee68ec33f37bb6ceea',
+    expectedLength: 57273,
+    expectedSha256: '29cbf101fafa0634071d7755aaada4574373095baf61077e01436f59565d0322',
     dataAttributes: {
       'data-page-mode': 'edge-to-edge',
       'data-surface-mode': 'background',
@@ -52,8 +52,8 @@ const HTML_REGRESSION_CASES: HtmlRegressionCase[] = [
   },
   {
     fixtureName: 'sidebar-long-content',
-    expectedLength: 63777,
-    expectedSha256: 'e0992d518b57e1bc67ea5c2367db8c8eec5a1085981c0adccb184343717ea94f',
+    expectedLength: 64470,
+    expectedSha256: '48673addd94baf7a94a0c900b9a9b0e817abe7dc5c95878936eaeb9a0c52cab9',
     dataAttributes: {
       'data-page-mode': 'edge-to-edge',
       'data-surface-mode': 'sidebar-dark',
@@ -71,8 +71,8 @@ const HTML_REGRESSION_CASES: HtmlRegressionCase[] = [
   },
   {
     fixtureName: 'compact-dense',
-    expectedLength: 56646,
-    expectedSha256: '094be8a90bde40bb303746feb9cfe68fed03c37a9f9b0ef166bee8589835283d',
+    expectedLength: 57331,
+    expectedSha256: '50ae30d0d3e28cfadc46b3cb6accff9ebf957c92fa4090e8d65e1b79d9f83556',
     dataAttributes: {
       'data-page-mode': 'edge-to-edge',
       'data-surface-mode': 'background',
@@ -86,8 +86,8 @@ const HTML_REGRESSION_CASES: HtmlRegressionCase[] = [
   },
   {
     fixtureName: 'neon-dark-background',
-    expectedLength: 62249,
-    expectedSha256: '17a5237e44e600fb19baef6d51fdd61315ed2c885e377b5e77d8be2f8acdfe9e',
+    expectedLength: 62906,
+    expectedSha256: 'f1647a608ad643d8fd23f3254e11155bd5ba3acd25476c970f3d3c3075d1c255',
     dataAttributes: {
       'data-page-mode': 'edge-to-edge',
       'data-surface-mode': 'full-dark',
@@ -105,8 +105,8 @@ const HTML_REGRESSION_CASES: HtmlRegressionCase[] = [
   },
   {
     fixtureName: 'swiss-page-gap',
-    expectedLength: 61762,
-    expectedSha256: '2a577bc08a33464c9392b384d0274d41efb9013a421bee6f47c6a2559e3aca18',
+    expectedLength: 62455,
+    expectedSha256: '6f281cb4643f985213e79bcb3f311bac2178034417b9532d1d3e10ac619a25cd',
     dataAttributes: {
       'data-page-mode': 'standard',
       'data-surface-mode': 'light',
@@ -123,8 +123,8 @@ const HTML_REGRESSION_CASES: HtmlRegressionCase[] = [
   },
   {
     fixtureName: 'gradient-page-margin',
-    expectedLength: 64958,
-    expectedSha256: '6af66f72a0a44e8f7b6266a3272c5f0c273e594ec0c19f00713d6286ad97ecb0',
+    expectedLength: 65651,
+    expectedSha256: '84c97b0f9fa7d454942bdfe6b6d4ef5c0f14175e7d98f6ce008e03c2658b59dd',
     dataAttributes: {
       'data-page-mode': 'edge-to-edge',
       'data-surface-mode': 'background',
@@ -164,7 +164,7 @@ test('PDF export HTML emits absolute font URLs when a font base URL is provided'
     html,
     new RegExp(`${TEST_FONT_BASE_URL}/fonts/custom/resource-han-rounded-cn/ResourceHanRoundedCN-Regular\\.ttf`),
   );
-  assert.match(html, /font-family: "Resource Han Rounded CN", "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif !important/);
+  assert.match(html, /"Resource Han Rounded CN", "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif/);
 });
 
 test('PDF export HTML is deterministic for representative long-content templates', async (t) => {

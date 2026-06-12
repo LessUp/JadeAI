@@ -7,11 +7,17 @@ import { chatRepository } from '@/lib/db/repositories/chat.repository';
 import { getSystemPrompt } from '@/lib/ai/prompts';
 import { createExecutableTools } from '@/lib/ai/tools';
 import { buildChatContextMessages } from '@/lib/ai/chat-context';
+import {
+  selectLatestResumeBaselineMessages,
+  shouldRebaseChatContextToLatestResume,
+} from '@/lib/ai/session-context-guard';
 import type { AIChatErrorKind, AIChatMessageMetadata } from '@/types/ai';
 import { serializeAssistantMessage } from '@/lib/ai/utils';
+import { resolveAssistantTerminalOutcome } from '@/lib/ai/chat-response-status';
 
-const DEFAULT_CHAT_STREAM_TIMEOUT_MS = 120_000;
-const DEFAULT_CHAT_STREAM_CHUNK_TIMEOUT_MS = 45_000;
+const DEFAULT_CHAT_STREAM_TIMEOUT_MS = 300_000;
+const DEFAULT_CHAT_STREAM_CHUNK_TIMEOUT_MS = 90_000;
+const DEFAULT_CHAT_MAX_OUTPUT_TOKENS = 8_192;
 
 function readPositiveIntEnv(name: string, fallback?: number) {
   const raw = process.env[name]?.trim();
@@ -22,7 +28,7 @@ function readPositiveIntEnv(name: string, fallback?: number) {
 
 const CHAT_STREAM_TIMEOUT_MS = readPositiveIntEnv('AI_CHAT_STREAM_TIMEOUT_MS', DEFAULT_CHAT_STREAM_TIMEOUT_MS) ?? DEFAULT_CHAT_STREAM_TIMEOUT_MS;
 const CHAT_STREAM_CHUNK_TIMEOUT_MS = readPositiveIntEnv('AI_CHAT_STREAM_CHUNK_TIMEOUT_MS', DEFAULT_CHAT_STREAM_CHUNK_TIMEOUT_MS) ?? DEFAULT_CHAT_STREAM_CHUNK_TIMEOUT_MS;
-const CHAT_MAX_OUTPUT_TOKENS = readPositiveIntEnv('AI_CHAT_MAX_OUTPUT_TOKENS');
+const CHAT_MAX_OUTPUT_TOKENS = readPositiveIntEnv('AI_CHAT_MAX_OUTPUT_TOKENS', DEFAULT_CHAT_MAX_OUTPUT_TOKENS);
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error && error.message ? error.message : 'An error occurred.';
@@ -206,12 +212,15 @@ export async function POST(request: NextRequest) {
 
     let resumeContext = '';
     let resolvedResumeId = resumeId;
+    let resolvedResumeUpdatedAt: Date | string | number | null = null;
+    let resolvedSessionUpdatedAt: Date | string | number | null = null;
     if (resumeId) {
       const resume = await resumeRepository.findByIdForUser(resumeId, user.id);
       if (!resume) {
         return new Response('Resume not found', { status: 404 });
       }
       resumeContext = JSON.stringify(resume.sections);
+      resolvedResumeUpdatedAt = resume.updatedAt;
     }
 
     if (sessionId) {
@@ -223,6 +232,7 @@ export async function POST(request: NextRequest) {
         return new Response('Session does not belong to resume', { status: 400 });
       }
       resolvedResumeId = resolvedResumeId ?? session.resumeId;
+      resolvedSessionUpdatedAt = session.updatedAt;
     }
 
     if (!resumeContext && resolvedResumeId) {
@@ -231,11 +241,19 @@ export async function POST(request: NextRequest) {
         return new Response('Resume not found', { status: 404 });
       }
       resumeContext = JSON.stringify(resume.sections);
+      resolvedResumeUpdatedAt = resume.updatedAt;
     }
 
     const aiConfig = extractAIConfig(request);
     const model = getModel(aiConfig, modelId);
-    const truncatedMessages = await buildChatContextMessages(messages);
+    const shouldRebaseContext = shouldRebaseChatContextToLatestResume(
+      resolvedSessionUpdatedAt,
+      resolvedResumeUpdatedAt
+    );
+    const contextSourceMessages = shouldRebaseContext
+      ? selectLatestResumeBaselineMessages(messages)
+      : messages;
+    const truncatedMessages = await buildChatContextMessages(contextSourceMessages);
 
     // Save user message to DB before streaming
     if (sessionId && messages.length > 0) {
@@ -292,7 +310,9 @@ export async function POST(request: NextRequest) {
       model: modelId || aiConfig.model,
       baseURLHost: getBaseURLHost(aiConfig.baseURL),
       messageCount: messages.length,
+      contextSourceMessageCount: contextSourceMessages.length,
       contextMessageCount: truncatedMessages.length,
+      contextRebased: shouldRebaseContext,
       hasResumeContext: Boolean(resumeContext),
       timeoutMs: CHAT_STREAM_TIMEOUT_MS,
       chunkTimeoutMs: CHAT_STREAM_CHUNK_TIMEOUT_MS,
@@ -336,17 +356,18 @@ export async function POST(request: NextRequest) {
         if (serialized.content.length > diagnostics!.outputLength) {
           diagnostics!.outputLength = serialized.content.length;
         }
-        const errorKind = classifyStreamError({
+        const classifiedErrorKind = classifyStreamError({
           finishReason,
           isAborted,
           requestAborted: request.signal.aborted,
           diagnostics: diagnostics!,
         });
-        const status = isAborted
-          ? 'aborted'
-          : serialized.hasError || finishReason === 'error' || Boolean(errorKind)
-            ? 'error'
-            : 'completed';
+        const { status, errorKind, errorText } = resolveAssistantTerminalOutcome({
+          serialized,
+          finishReason,
+          isAborted,
+          classifiedErrorKind,
+        });
         const endedAt = Date.now();
 
         await chatRepository.updateMessage(assistantMessageId, {
@@ -357,7 +378,7 @@ export async function POST(request: NextRequest) {
               endedAt,
               finishReason,
               errorKind,
-              errorText: serialized.errorText,
+              errorText,
             }),
             orderedParts: serialized.orderedParts,
           } satisfies AIChatMessageMetadata,

@@ -27,7 +27,9 @@ export function createExecutableTools({
 }) {
   return {
     updateSection: tool({
-      description: `Update the content of a specific resume section. Section content structures:
+      description: `Update fields in a specific resume section. You can update section title and section content.
+- Rename section title: use field="title" (or "sectionTitle") with a plain string value.
+Section content structures:
 - personal_info: { fullName, jobTitle, email, phone, location, website, linkedin, github }
 - summary: { text: string }
 - work_experience: { items: [{ id, company, position, location, startDate, endDate, current, description, highlights }] }
@@ -45,11 +47,11 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
         value: z.string().describe('The new value for the field. For complex values (arrays, objects), pass a JSON string.'),
       }),
       execute: async ({ sectionId, field, value }) => {
-        const resume = await resumeRepository.findByIdForUser(resumeId, userId);
-        if (!resume) return { success: false, error: 'Resume not found' };
+        const latestResume = await resumeRepository.findByIdForUser(resumeId, userId);
+        if (!latestResume) return { success: false, error: 'Resume not found' };
 
-        const section = resume.sections.find((s: any) => s.id === sectionId);
-        if (!section) return { success: false, error: 'Section not found' };
+        const latestSection = latestResume.sections.find((s: any) => s.id === sectionId);
+        if (!latestSection) return { success: false, error: 'Section not found' };
 
         let parsedValue: unknown = value;
         try {
@@ -58,10 +60,20 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
           // Use as string if not valid JSON
         }
 
+        const isSectionTitleField = field === 'title' || field === 'sectionTitle';
+        if (isSectionTitleField) {
+          if (typeof parsedValue !== 'string') {
+            return { success: false, error: 'Invalid value: section title must be a string' };
+          }
+
+          await resumeRepository.updateSection(sectionId, { title: parsedValue });
+          return { success: true, sectionType: latestSection.type, field: 'title', updatedTitle: parsedValue };
+        }
+
         // Fix field name for item-based sections when AI uses wrong field
         const itemSections = ['work_experience', 'education', 'projects', 'certifications', 'languages', 'github', 'custom'];
         let actualField = field;
-        if (itemSections.includes(section.type) && field !== 'items') {
+        if (itemSections.includes(latestSection.type) && field !== 'items') {
           // AI sent wrong field (e.g. "text") for an items-based section — convert to items
           if (typeof parsedValue === 'string') {
             // Convert plain text to a single custom item
@@ -72,9 +84,9 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
               parsedValue = (parsedValue as any).items;
             }
           }
-          actualField = section.type === 'skills' ? 'categories' : 'items';
+          actualField = latestSection.type === 'skills' ? 'categories' : 'items';
         }
-        if (section.type === 'skills' && field !== 'categories') {
+        if (latestSection.type === 'skills' && field !== 'categories') {
           actualField = 'categories';
         }
 
@@ -93,8 +105,8 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
         }
 
         // GitHub sections: protect read-only fields for existing items, auto-fetch for new items
-        if (section.type === 'github' && actualField === 'items' && Array.isArray(parsedValue)) {
-          const existingItems = ((section.content as any)?.items || []) as any[];
+        if (latestSection.type === 'github' && actualField === 'items' && Array.isArray(parsedValue)) {
+          const existingItems = ((latestSection.content as any)?.items || []) as any[];
           const readonlyMap = new Map(existingItems.map((it: any) => [it.id, { stars: it.stars, name: it.name, repoUrl: it.repoUrl, language: it.language }]));
           parsedValue = await Promise.all((parsedValue as any[]).map(async (item: any) => {
             // Existing item: restore read-only fields
@@ -122,17 +134,12 @@ Use field="items" or field="categories" to update list sections. Each item MUST 
           }));
         }
 
-        const updatedContent = { ...(section.content as Record<string, unknown>), [actualField]: parsedValue };
-        const normalizedContent = normalizeResumeSectionContent(section.type, updatedContent);
-
-        const latestResume = await resumeRepository.findByIdForUser(resumeId, userId);
-        if (!latestResume) return { success: false, error: 'Resume not found' };
-        const latestSection = latestResume.sections.find((s: any) => s.id === sectionId);
-        if (!latestSection) return { success: false, error: 'Section not found' };
+        const updatedContent = { ...(latestSection.content as Record<string, unknown>), [actualField]: parsedValue };
+        const normalizedContent = normalizeResumeSectionContent(latestSection.type, updatedContent);
 
         await resumeRepository.updateSection(sectionId, { content: normalizedContent });
 
-        return { success: true, sectionType: section.type, field: actualField, updatedContent: normalizedContent };
+        return { success: true, sectionType: latestSection.type, field: actualField, updatedContent: normalizedContent };
       },
     }),
 

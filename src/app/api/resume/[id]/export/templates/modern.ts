@@ -72,7 +72,7 @@ function buildModernSectionContent(section: Section, lang: string = 'en'): strin
   if (section.type === 'languages') {
     return `<div class="flex flex-wrap gap-2">${((c as LanguagesContent).items || []).map((it: any) => {
       const description = getLanguageDescriptionText(it);
-      return `<div style="${description ? 'width:100%;max-width:100%' : 'max-width:100%'}"><span class="inline-flex max-w-full flex-wrap items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">${esc(it.language)} <span class="text-zinc-400">— ${esc(it.proficiency)}</span></span>${description ? `<div class="w-full text-xs leading-5 text-zinc-500">${md(description)}</div>` : ''}</div>`;
+      return `<div style="${description ? 'width:100%;max-width:100%' : 'max-width:100%'}"><span class="inline-flex max-w-full flex-wrap items-center rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">${esc(it.language)} <span class="text-zinc-400">— ${esc(it.proficiency)}</span></span>${description ? `<div class="w-full text-sm leading-relaxed text-zinc-600">${md(description)}</div>` : ''}</div>`;
     }).join('')}</div>`;
   }
   if (section.type === 'custom') {
