@@ -108,6 +108,8 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
   );
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
+  const switchingRef = useRef<string | null>(null);
+  const sessionsRef = useRef<ChatSession[]>([]);
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>();
@@ -150,6 +152,11 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
     const intervalId = window.setInterval(() => setNowMs(Date.now()), 1_000);
     return () => window.clearInterval(intervalId);
   }, [status]);
+
+  // Sync sessionsRef with sessions state
+  useEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
 
   // Sync selectedModel when settings hydrate or user changes default model
   useEffect(() => {
@@ -229,18 +236,38 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
 
   const switchSession = useCallback(async (sessionId: string) => {
     if (sessionId === activeSessionId) return;
+
+    // Prevent concurrent switching
+    if (switchingRef.current) return;
+    switchingRef.current = sessionId;
+
     try {
-      await ensureResumeStoreSyncedBeforeAI();
-    } catch (syncError) {
-      const message = syncError instanceof Error ? syncError.message : t('errorMessage');
-      toast.error(t('errorMessage'), { description: message });
-      return;
+      try {
+        await ensureResumeStoreSyncedBeforeAI();
+      } catch (syncError) {
+        const message = syncError instanceof Error ? syncError.message : t('errorMessage');
+        toast.error(t('errorMessage'), { description: message });
+        return;
+      }
+
+      // Check if this is still the current request
+      if (switchingRef.current !== sessionId) return;
+
+      resetTerminalState();
+      setActiveSessionId(sessionId);
+      setHistoryOpen(false);
+      const msgs = await loadInitial(sessionId);
+
+      // Check again before setting messages
+      if (switchingRef.current !== sessionId) return;
+
+      setInitialMessages(msgs);
+    } finally {
+      // Clear the switching flag if this is still the current request
+      if (switchingRef.current === sessionId) {
+        switchingRef.current = null;
+      }
     }
-    resetTerminalState();
-    setActiveSessionId(sessionId);
-    setHistoryOpen(false);
-    const msgs = await loadInitial(sessionId);
-    setInitialMessages(msgs);
   }, [activeSessionId, loadInitial, resetTerminalState, t]);
 
   const deleteSession = useCallback(async (sessionId: string) => {
@@ -252,21 +279,24 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
       return;
     }
 
-    // Remove from state (pure updater — no side effects)
+    // 1. Update sessions state (pure state update, no side effects)
     setSessions((prev) => prev.filter((s) => s.id !== sessionId));
 
-    // Handle active session switch outside the updater to avoid Strict Mode double-invocation
+    // 2. Wait for state update to complete
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // 3. Use sessionsRef to get the latest sessions value
+    const remaining = sessionsRef.current;
     if (sessionId === activeSessionId) {
-      const remaining = sessions.filter((s) => s.id !== sessionId);
       if (remaining.length > 0) {
         const nextId = remaining[0].id;
-        setActiveSessionId(nextId);
-        loadInitial(nextId).then((msgs) => setInitialMessages(msgs));
+        // Use switchSession to ensure mutual exclusion
+        await switchSession(nextId);
       } else {
         await createNewSession();
       }
     }
-  }, [activeSessionId, sessions, loadInitial, createNewSession]);
+  }, [activeSessionId, switchSession, createNewSession]);
 
   // Show toast when AI API call fails
   const lastErrorRef = useRef<Error | null>(null);

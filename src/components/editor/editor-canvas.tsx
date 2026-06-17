@@ -74,6 +74,11 @@ export function EditorCanvas({
     [sections, onReorderSections, setDragging]
   );
 
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null);
+    setDragging(false);
+  }, [setDragging]);
+
   const activeSection = activeId ? sections.find((s) => s.id === activeId) : null;
 
   return (
@@ -85,6 +90,7 @@ export function EditorCanvas({
             collisionDetection={closestCenter}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
           >
             <SortableContext
               items={sections.map((s) => s.id)}
