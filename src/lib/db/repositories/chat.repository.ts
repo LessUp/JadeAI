@@ -180,6 +180,16 @@ export const chatRepository = {
     return db.select().from(chatMessages).where(eq(chatMessages.id, id)).limit(1).then((r: any[]) => r[0]);
   },
 
+  async findMessageInSession(messageId: string, sessionId: string) {
+    const rows = await db
+      .select()
+      .from(chatMessages)
+      .where(and(eq(chatMessages.id, messageId), eq(chatMessages.sessionId, sessionId)))
+      .limit(1);
+
+    return rows[0] ?? null;
+  },
+
   async updateMessage(messageId: string, data: Partial<{ content: string; metadata: unknown }>) {
     const updateData: Partial<{ content: string; metadata: unknown }> = {};
     if (data.content !== undefined) updateData.content = data.content;

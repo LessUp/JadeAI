@@ -4,9 +4,11 @@ import type { AIChatUIMessage } from '@/types/ai';
 import {
   EMPTY_ASSISTANT_RESPONSE_ERROR_TEXT,
   hasRenderableAssistantReplySinceRequest,
+  isEmptyAssistantResponseErrorText,
   hasRenderableSerializedAssistantOutput,
   hasRenderableUIAssistantMessage,
   resolveAssistantTerminalOutcome,
+  shouldSurfaceEmptyAssistantResponseError,
 } from './chat-response-status';
 
 test('hasRenderableSerializedAssistantOutput treats non-empty text as renderable', () => {
@@ -62,6 +64,70 @@ test('resolveAssistantTerminalOutcome keeps classified errors', () => {
   assert.equal(outcome.status, 'error');
   assert.equal(outcome.errorKind, 'provider');
   assert.equal(outcome.errorText, 'Provider timeout');
+});
+
+test('isEmptyAssistantResponseErrorText matches only the canonical error text', () => {
+  assert.equal(isEmptyAssistantResponseErrorText(EMPTY_ASSISTANT_RESPONSE_ERROR_TEXT), true);
+  assert.equal(isEmptyAssistantResponseErrorText('provider timeout'), false);
+  assert.equal(isEmptyAssistantResponseErrorText(undefined), false);
+});
+
+test('shouldSurfaceEmptyAssistantResponseError requires explicit session-scoped terminal state', () => {
+  assert.equal(shouldSurfaceEmptyAssistantResponseError({
+    sessionId: undefined,
+    terminalSessionId: undefined,
+    requestStatus: 'ready',
+    terminalStatus: undefined,
+    hasRenderableAssistantReply: false,
+  }), false);
+
+  assert.equal(shouldSurfaceEmptyAssistantResponseError({
+    sessionId: 'session-a',
+    terminalSessionId: undefined,
+    requestStatus: 'ready',
+    terminalStatus: undefined,
+    hasRenderableAssistantReply: false,
+  }), false);
+
+  assert.equal(shouldSurfaceEmptyAssistantResponseError({
+    sessionId: 'session-a',
+    terminalSessionId: 'session-b',
+    requestStatus: 'ready',
+    terminalStatus: undefined,
+    hasRenderableAssistantReply: false,
+  }), false);
+
+  assert.equal(shouldSurfaceEmptyAssistantResponseError({
+    sessionId: 'session-a',
+    terminalSessionId: 'session-a',
+    requestStatus: 'streaming',
+    terminalStatus: undefined,
+    hasRenderableAssistantReply: false,
+  }), false);
+
+  assert.equal(shouldSurfaceEmptyAssistantResponseError({
+    sessionId: 'session-a',
+    terminalSessionId: 'session-a',
+    requestStatus: 'ready',
+    terminalStatus: 'error',
+    hasRenderableAssistantReply: false,
+  }), false);
+
+  assert.equal(shouldSurfaceEmptyAssistantResponseError({
+    sessionId: 'session-a',
+    terminalSessionId: 'session-a',
+    requestStatus: 'ready',
+    terminalStatus: undefined,
+    hasRenderableAssistantReply: true,
+  }), false);
+
+  assert.equal(shouldSurfaceEmptyAssistantResponseError({
+    sessionId: 'session-a',
+    terminalSessionId: 'session-a',
+    requestStatus: 'ready',
+    terminalStatus: undefined,
+    hasRenderableAssistantReply: false,
+  }), true);
 });
 
 test('hasRenderableUIAssistantMessage detects renderable assistant parts', () => {

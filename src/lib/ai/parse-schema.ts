@@ -23,6 +23,7 @@ export const parsedResumeSchema = z.object({
   summary: z.string().optional().describe('Professional summary or objective'),
   workExperience: z.array(z.object({
     company: z.string().describe('Company name'),
+    team: z.string().optional().describe('Department or team name'),
     position: z.string().describe('Job title/position'),
     location: z.string().optional().describe('Job location'),
     startDate: z.string().describe('Start date (YYYY-MM format)'),

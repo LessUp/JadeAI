@@ -2,6 +2,7 @@ import { esc, buildExportThemeCSS, type ResumeWithSections } from './utils';
 import { EXPORT_TAILWIND_CSS } from '@/lib/pdf/export-tailwind-css';
 import { getEmbeddedFontFacesCss } from '@/lib/font-stacks';
 import { normalizeLanguageDescriptionsForCompactTemplates } from '@/lib/language-description';
+import { normalizeWorkExperienceMetadataForDisplay } from '@/lib/work-experience-meta';
 import {
   getPdfBodyBackground,
   getPdfLayoutDataAttributes,
@@ -158,7 +159,9 @@ export async function generateHtml(
   forPdf = false,
   fontBaseUrl = ''
 ): Promise<string> {
-  const safeResume = normalizeLanguageDescriptionsForCompactTemplates(resume);
+  const safeResume = normalizeWorkExperienceMetadataForDisplay(
+    normalizeLanguageDescriptionsForCompactTemplates(resume)
+  );
   // Pre-generate QR SVGs so sync template builders can use them
   await preGenerateQrSvgs(safeResume);
   const builder = TEMPLATE_BUILDERS[safeResume.template] || buildClassicHtml;

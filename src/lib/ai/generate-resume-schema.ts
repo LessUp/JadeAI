@@ -31,6 +31,7 @@ export const generateResumeOutputSchema = z.object({
   work_experience: z.object({
     items: z.array(z.object({
       company: z.string(),
+      team: z.string().optional(),
       position: z.string(),
       location: z.string().optional(),
       startDate: z.string(),

@@ -3,6 +3,7 @@ import test from 'node:test';
 import type { UIMessage } from 'ai';
 
 import { buildChatContextMessages } from './chat-context';
+import { EMPTY_ASSISTANT_RESPONSE_ERROR_TEXT } from './chat-response-status';
 import { dbMessagesToUIMessages } from './utils';
 
 function createConversation(pattern: string): UIMessage[] {
@@ -373,6 +374,54 @@ test('resumed pending assistant metadata survives even without text parts', () =
   assert.equal(assistantMessage.metadata?.status, 'submitted');
   assert.equal(assistantMessage.metadata?.startedAt, 1234567890);
   assert.deepEqual(assistantMessage.parts, []);
+});
+
+test('resumed history drops legacy empty-response placeholders from display/context', () => {
+  const resumedMessages = dbMessagesToUIMessages([
+    {
+      id: 'user-1',
+      role: 'user',
+      content: '继续优化',
+      createdAt: Date.now(),
+    },
+    {
+      id: 'assistant-empty',
+      role: 'assistant',
+      content: '',
+      metadata: {
+        status: 'error',
+        errorKind: 'stream',
+        errorText: EMPTY_ASSISTANT_RESPONSE_ERROR_TEXT,
+        orderedParts: [],
+      },
+      createdAt: Date.now(),
+    },
+  ]);
+
+  assert.deepEqual(
+    resumedMessages.map((message) => message.id),
+    ['user-1']
+  );
+});
+
+test('resumed history keeps empty-response errors when assistant still has renderable output', () => {
+  const resumedMessages = dbMessagesToUIMessages([
+    {
+      id: 'assistant-1',
+      role: 'assistant',
+      content: 'fallback text',
+      metadata: {
+        status: 'error',
+        errorText: EMPTY_ASSISTANT_RESPONSE_ERROR_TEXT,
+        orderedParts: [{ type: 'text', text: 'fallback text' }],
+      },
+      createdAt: Date.now(),
+    },
+  ]);
+
+  assert.equal(resumedMessages.length, 1);
+  assert.equal(resumedMessages[0]?.id, 'assistant-1');
+  assert.ok(resumedMessages[0]?.parts.some((part) => part.type === 'text'));
 });
 
 test('chat context drops assistant messages that only contain empty text parts', async () => {

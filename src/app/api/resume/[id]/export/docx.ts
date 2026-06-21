@@ -14,6 +14,7 @@ import { mergeThemeConfig } from '@/lib/resume-theme/build-theme-css';
 import QRCode from 'qrcode';
 import { type ResumeWithSections, getPersonalInfo, visibleSections, DEFAULT_THEME, safe } from './utils';
 import { resolveDocxFonts } from '@/lib/font-stacks';
+import { normalizeWorkExperienceMetadataForDisplay } from '@/lib/work-experience-meta';
 
 // ─── Template style configuration ───────────────────────────
 // Colors + layout style per template. Templates without headerBg
@@ -1050,9 +1051,10 @@ function buildMainSection(section: Section, theme: DocxTheme, qrImages: Map<stri
 // ─── Main export ─────────────────────────────────────────────
 
 export async function generateDocxBuffer(resume: ResumeWithSections): Promise<Buffer> {
-  const theme = resolveTheme(resume.themeConfig, resume.template);
-  const info = getPersonalInfo(resume);
-  const sections = visibleSections(resume);
+  const safeResume = normalizeWorkExperienceMetadataForDisplay(resume);
+  const theme = resolveTheme(safeResume.themeConfig, safeResume.template);
+  const info = getPersonalInfo(safeResume);
+  const sections = visibleSections(safeResume);
 
   // Pre-generate QR code PNG buffers
   const qrImages = new Map<string, Buffer>();

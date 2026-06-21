@@ -26,6 +26,7 @@ export function WorkExperienceSection({ section, onUpdate }: Props) {
     const newItem: WorkExperienceItem = {
       id: generateId(),
       company: '',
+      team: '',
       position: '',
       location: '',
       startDate: '',
@@ -64,8 +65,9 @@ export function WorkExperienceSection({ section, onUpdate }: Props) {
                 <X className="h-3.5 w-3.5" />
               </Button>
             </div>
-            <FieldWrapper>
+            <FieldWrapper columns={3}>
               <EditableText label={t('company')} value={item.company} onChange={(v) => updateItem(index, { company: v })} />
+              <EditableText label={t('team')} value={item.team || ''} onChange={(v) => updateItem(index, { team: v })} />
               <EditableText label={t('position')} value={item.position} onChange={(v) => updateItem(index, { position: v })} />
             </FieldWrapper>
             <FieldWrapper>

@@ -32,7 +32,7 @@ export function createExecutableTools({
 Section content structures:
 - personal_info: { fullName, jobTitle, email, phone, location, website, linkedin, github }
 - summary: { text: string }
-- work_experience: { items: [{ id, company, position, location, startDate, endDate, current, description, highlights }] }
+- work_experience: { items: [{ id, company, team?, position, location, startDate, endDate, current, description, highlights }] }
 - education: { items: [{ id, institution, degree, field, location, startDate, endDate, gpa, highlights }] }
 - skills: { categories: [{ id, name, skills: string[] }] }
 - projects: { items: [{ id, name, url, description, technologies, highlights }] }

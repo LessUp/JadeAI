@@ -1,5 +1,6 @@
 import type { UIMessage } from 'ai';
 import type { AIChatMessageMetadata, AIChatUIMessage, StoredOrderedPart, StoredToolState } from '@/types/ai';
+import { isEmptyAssistantResponseErrorText } from './chat-response-status';
 
 interface DBMessage {
   id: string;
@@ -162,8 +163,33 @@ function restoreLegacyToolCalls(
   return parts;
 }
 
+function hasRenderableAssistantParts(parts: UIMessage['parts']) {
+  return parts.some((part) => {
+    if (part.type === 'text') return part.text.trim().length > 0;
+    return typeof part.type === 'string' && part.type.startsWith('tool-');
+  });
+}
+
+function shouldSuppressHistoricalEmptyResponseMessage({
+  role,
+  content,
+  metadata,
+  parts,
+}: {
+  role: DBMessage['role'];
+  content: string;
+  metadata: AIChatMessageMetadata;
+  parts: UIMessage['parts'];
+}) {
+  if (role !== 'assistant') return false;
+  if (metadata.status !== 'error') return false;
+  if (!isEmptyAssistantResponseErrorText(metadata.errorText)) return false;
+  if (content.trim().length > 0) return false;
+  return !hasRenderableAssistantParts(parts);
+}
+
 export function dbMessagesToUIMessages(dbMessages: DBMessage[]): AIChatUIMessage[] {
-  return dbMessages.map((msg) => {
+  return dbMessages.flatMap((msg) => {
     const metadata = (msg.metadata || {}) as AIChatMessageMetadata;
     let parts: UIMessage['parts'] = [];
 
@@ -181,14 +207,23 @@ export function dbMessagesToUIMessages(dbMessages: DBMessage[]): AIChatUIMessage
       parts = [{ type: 'text', text: msg.content }];
     }
 
-    return {
+    if (shouldSuppressHistoricalEmptyResponseMessage({
+      role: msg.role,
+      content: msg.content,
+      metadata,
+      parts,
+    })) {
+      return [];
+    }
+
+    return [{
       id: msg.id,
       role: msg.role,
       content: msg.content,
       parts,
       metadata,
       createdAt: msg.createdAt instanceof Date ? msg.createdAt : new Date(msg.createdAt as number),
-    } as AIChatUIMessage;
+    } as AIChatUIMessage];
   });
 }
 

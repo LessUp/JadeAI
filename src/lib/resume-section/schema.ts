@@ -35,6 +35,7 @@ const workExperienceSchema = z.object({
   items: z.array(z.object({
     id: idSchema,
     company: stringSchema,
+    team: optionalStringSchema,
     position: stringSchema,
     location: optionalStringSchema,
     startDate: stringSchema,

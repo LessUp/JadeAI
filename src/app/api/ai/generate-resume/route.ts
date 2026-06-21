@@ -100,7 +100,7 @@ Return a JSON object with these exact top-level keys: personal_info, summary, wo
 The structure must be:
 - personal_info: { fullName, jobTitle, email, phone, location, website?, linkedin?, github? }
 - summary: { text }
-- work_experience: { items: [{ company, position, location?, startDate, endDate (null if current), current, description, highlights: string[] }] }
+- work_experience: { items: [{ company, team?, position, location?, startDate, endDate (null if current), current, description, highlights: string[] }] }
 - education: { items: [{ institution, degree, field, location?, startDate, endDate, gpa?, highlights: string[] }] }
 - skills: { categories: [{ name, skills: string[] }] }
 - projects: { items: [{ name, url?, startDate?, endDate?, description, technologies: string[], highlights: string[] }] }

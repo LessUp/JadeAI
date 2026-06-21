@@ -14,6 +14,8 @@ import {
 import type { AIChatErrorKind, AIChatMessageMetadata } from '@/types/ai';
 import { serializeAssistantMessage } from '@/lib/ai/utils';
 import { resolveAssistantTerminalOutcome } from '@/lib/ai/chat-response-status';
+import { isRetryableErrorKind } from '@/lib/ai/chat-retry-policy';
+import { stripAssistantToolPartsForRecovery } from '@/lib/ai/chat-context-recovery';
 
 const DEFAULT_CHAT_STREAM_TIMEOUT_MS = 300_000;
 const DEFAULT_CHAT_STREAM_CHUNK_TIMEOUT_MS = 90_000;
@@ -151,10 +153,6 @@ function classifyStreamError({
   return 'stream';
 }
 
-function isRetryableErrorKind(errorKind?: AIChatErrorKind) {
-  return errorKind === 'timeout_chunk' || errorKind === 'timeout_total' || errorKind === 'network' || errorKind === 'provider';
-}
-
 function createDiagnosticsMetadata(
   diagnostics: StreamDiagnostics,
   extra: Pick<AIChatMessageMetadata, 'status' | 'endedAt'> & Partial<Pick<AIChatMessageMetadata, 'finishReason' | 'errorText' | 'errorKind'>>
@@ -202,13 +200,28 @@ export async function POST(request: NextRequest) {
       resumeId,
       model: modelId,
       sessionId,
+      trigger,
+      messageId,
     }: {
       messages: UIMessage[];
       resumeId?: string;
       model?: string;
       sessionId?: string;
+      trigger?: 'submit-message' | 'regenerate-message';
+      messageId?: string;
     } = await request.json();
     persistedSessionId = sessionId;
+    const isRegenerateRequest = trigger === 'regenerate-message';
+    const regenerateTargetMessageId = isRegenerateRequest
+      ? messageId ?? [...messages].reverse().find((candidate) => candidate.role === 'assistant')?.id
+      : undefined;
+
+    if (isRegenerateRequest && !sessionId) {
+      return new Response('Session is required for regenerate requests', { status: 400 });
+    }
+    if (isRegenerateRequest && !regenerateTargetMessageId) {
+      return new Response('Missing assistant message id for regenerate request', { status: 400 });
+    }
 
     let resumeContext = '';
     let resolvedResumeId = resumeId;
@@ -253,10 +266,27 @@ export async function POST(request: NextRequest) {
     const contextSourceMessages = shouldRebaseContext
       ? selectLatestResumeBaselineMessages(messages)
       : messages;
-    const truncatedMessages = await buildChatContextMessages(contextSourceMessages);
+    let truncatedMessages: Awaited<ReturnType<typeof buildChatContextMessages>>;
+    try {
+      truncatedMessages = await buildChatContextMessages(contextSourceMessages);
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
+      if (!/No tool call found/i.test(errorMessage)) {
+        throw error;
+      }
+      const recoveredContextMessages = stripAssistantToolPartsForRecovery(contextSourceMessages);
+      truncatedMessages = await buildChatContextMessages(recoveredContextMessages);
+      logChatStream('warn', 'context_recovered_by_stripping_assistant_tools', {
+        sessionId,
+        trigger,
+        errorMessage,
+        contextSourceMessageCount: contextSourceMessages.length,
+        recoveredContextMessageCount: recoveredContextMessages.length,
+      });
+    }
 
     // Save user message to DB before streaming
-    if (sessionId && messages.length > 0) {
+    if (!isRegenerateRequest && sessionId && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       if (lastMessage.role === 'user') {
         const content = (lastMessage.parts || [])
@@ -281,21 +311,38 @@ export async function POST(request: NextRequest) {
     }
 
     if (sessionId) {
-      assistantMessageId = crypto.randomUUID();
       startedAt = Date.now();
       diagnostics = createInitialDiagnostics(startedAt);
-      await chatRepository.addMessage({
-        id: assistantMessageId,
-        sessionId,
-        role: 'assistant',
-        content: '',
-        metadata: {
-          status: 'submitted',
-          startedAt,
-          requestId: diagnostics.requestId,
-          orderedParts: [],
-        } satisfies AIChatMessageMetadata,
-      });
+      if (isRegenerateRequest && regenerateTargetMessageId) {
+        const existingMessage = await chatRepository.findMessageInSession(regenerateTargetMessageId, sessionId);
+        if (!existingMessage || existingMessage.role !== 'assistant') {
+          return new Response('Invalid regenerate message id', { status: 400 });
+        }
+        assistantMessageId = existingMessage.id;
+        await chatRepository.updateMessage(existingMessage.id, {
+          content: '',
+          metadata: {
+            status: 'submitted',
+            startedAt,
+            requestId: diagnostics.requestId,
+            orderedParts: [],
+          } satisfies AIChatMessageMetadata,
+        });
+      } else {
+        assistantMessageId = crypto.randomUUID();
+        await chatRepository.addMessage({
+          id: assistantMessageId,
+          sessionId,
+          role: 'assistant',
+          content: '',
+          metadata: {
+            status: 'submitted',
+            startedAt,
+            requestId: diagnostics.requestId,
+            orderedParts: [],
+          } satisfies AIChatMessageMetadata,
+        });
+      }
     }
     if (!diagnostics) {
       startedAt = Date.now();
@@ -310,6 +357,8 @@ export async function POST(request: NextRequest) {
       model: modelId || aiConfig.model,
       baseURLHost: getBaseURLHost(aiConfig.baseURL),
       messageCount: messages.length,
+      trigger: trigger ?? 'submit-message',
+      regenerateTargetMessageId,
       contextSourceMessageCount: contextSourceMessages.length,
       contextMessageCount: truncatedMessages.length,
       contextRebased: shouldRebaseContext,

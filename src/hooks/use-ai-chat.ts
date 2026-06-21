@@ -16,6 +16,7 @@ import {
   EMPTY_ASSISTANT_RESPONSE_ERROR_TEXT,
   hasRenderableAssistantReplySinceRequest,
   hasRenderableUIAssistantMessage,
+  shouldSurfaceEmptyAssistantResponseError,
 } from '@/lib/ai/chat-response-status';
 
 interface UseAIChatOptions {
@@ -76,7 +77,16 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
     [resumeId, selectedModel, sessionId]
   );
 
-  const { messages, sendMessage: rawSendMessage, status, error, setMessages, stop, clearError } = useChat<AIChatUIMessage>({
+  const {
+    messages,
+    sendMessage: rawSendMessage,
+    regenerate: rawRegenerate,
+    status,
+    error,
+    setMessages,
+    stop,
+    clearError,
+  } = useChat<AIChatUIMessage>({
     id: sessionId,
     transport,
   });
@@ -87,13 +97,20 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
     requestBaselineAssistantId,
     requestBaselineAssistantWasRenderable
   );
-  const emptyResponseError = useMemo(() => {
-    if (terminalSessionId !== sessionId) return null;
-    if (status !== 'ready') return null;
-    if (lastTerminalStatus) return null;
-    if (hasRenderableAssistantReply) return null;
-    return new Error(EMPTY_ASSISTANT_RESPONSE_ERROR_TEXT);
-  }, [hasRenderableAssistantReply, lastTerminalStatus, sessionId, status, terminalSessionId]);
+  const emptyResponseError = useMemo(
+    () => (
+      shouldSurfaceEmptyAssistantResponseError({
+        sessionId,
+        terminalSessionId,
+        requestStatus: status,
+        terminalStatus: lastTerminalStatus,
+        hasRenderableAssistantReply,
+      })
+        ? new Error(EMPTY_ASSISTANT_RESPONSE_ERROR_TEXT)
+        : null
+    ),
+    [hasRenderableAssistantReply, lastTerminalStatus, sessionId, status, terminalSessionId]
+  );
 
   const isLoading = status === 'streaming' || status === 'submitted';
   const terminalStatus = terminalSessionId === sessionId
@@ -251,6 +268,31 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
     stop();
   }, [resetStreamActivity, sessionId, stop]);
 
+  const retryAssistantMessage = useCallback(async (assistantMessageId?: string) => {
+    if (!sessionId) return;
+    const targetAssistantMessage = assistantMessageId
+      ? messages.find((message) => message.id === assistantMessageId && message.role === 'assistant')
+      : getLatestAssistantMessage(messages);
+    if (!targetAssistantMessage) return;
+
+    clearError();
+    setPreflightError(null);
+    setTerminalSessionId(sessionId);
+    setLastTerminalStatus(undefined);
+    setRequestBaselineAssistantId(targetAssistantMessage.id);
+    setRequestBaselineAssistantWasRenderable(hasRenderableUIAssistantMessage(targetAssistantMessage));
+    startStreamActivity();
+
+    try {
+      await rawRegenerate({ messageId: targetAssistantMessage.id });
+    } catch (retryError) {
+      console.error('Failed to retry AI message:', retryError);
+      resetStreamActivity();
+      setTerminalSessionId(sessionId);
+      setLastTerminalStatus('error');
+    }
+  }, [clearError, messages, rawRegenerate, resetStreamActivity, sessionId, startStreamActivity]);
+
   const resetTerminalState = useCallback(() => {
     setRequestBaselineAssistantId(undefined);
     setRequestBaselineAssistantWasRenderable(false);
@@ -271,6 +313,7 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
     lastTerminalStatus: terminalStatus,
     clearMessages,
     sendMessage: sendChatMessage,
+    retryAssistantMessage,
     stopStreaming,
     resetTerminalState,
   };

@@ -37,6 +37,7 @@ export interface SummaryContent {
 export interface WorkExperienceItem {
   id: string;
   company: string;
+  team?: string;
   position: string;
   location?: string;
   startDate: string;

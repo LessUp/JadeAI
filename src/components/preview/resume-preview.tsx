@@ -4,6 +4,7 @@ import { useId } from 'react';
 import type { Resume } from '@/types/resume';
 import { normalizeLanguageDescriptionsForCompactTemplates } from '@/lib/language-description';
 import { buildThemeCss, mergeThemeConfig } from '@/lib/resume-theme/build-theme-css';
+import { normalizeWorkExperienceMetadataForDisplay } from '@/lib/work-experience-meta';
 import { ClassicTemplate } from './templates/classic';
 import { ModernTemplate } from './templates/modern';
 import { MinimalTemplate } from './templates/minimal';
@@ -130,8 +131,10 @@ export function ResumePreview({ resume }: ResumePreviewProps) {
   const theme = mergeThemeConfig(resume.themeConfig);
 
   // Defensive: ensure resume.sections is always an array (AI may return invalid/empty data)
-  const safeResume = normalizeLanguageDescriptionsForCompactTemplates(
-    resume.sections ? resume : { ...resume, sections: [] }
+  const safeResume = normalizeWorkExperienceMetadataForDisplay(
+    normalizeLanguageDescriptionsForCompactTemplates(
+      resume.sections ? resume : { ...resume, sections: [] }
+    )
   );
 
   return (

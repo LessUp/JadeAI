@@ -10,11 +10,13 @@ import type {
   CustomContent,
 } from '@/types/resume';
 import { safe, type ResumeWithSections } from './utils';
+import { normalizeWorkExperienceMetadataForDisplay } from '@/lib/work-experience-meta';
 
 export function generatePlainText(resume: ResumeWithSections): string {
+  const safeResume = normalizeWorkExperienceMetadataForDisplay(resume);
   const lines: string[] = [];
 
-  for (const section of resume.sections) {
+  for (const section of safeResume.sections) {
     if (!section.visible) continue;
 
     switch (section.type) {

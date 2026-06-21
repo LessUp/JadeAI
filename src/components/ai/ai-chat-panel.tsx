@@ -12,6 +12,7 @@ import { useAIChat } from '@/hooks/use-ai-chat';
 import { useMessagePagination } from '@/hooks/use-message-pagination';
 import type { AIChatErrorKind, AIChatMessageMetadata, AIChatStatus, AIChatUIMessage } from '@/types/ai';
 import { ensureResumeStoreSyncedBeforeAI } from '@/lib/ai/resume-sync-guard';
+import { isEmptyAssistantResponseErrorText } from '@/lib/ai/chat-response-status';
 import { AIMessage } from './ai-message';
 import { AIInput } from './ai-input';
 
@@ -136,6 +137,7 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
     error: chatError,
     streamActivity,
     sendMessage,
+    retryAssistantMessage,
     stopStreaming,
     lastTerminalStatus,
     resetTerminalState,
@@ -304,6 +306,7 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
     if (chatError && chatError !== lastErrorRef.current) {
       lastErrorRef.current = chatError;
       const msg = chatError.message || t('errorMessage');
+      if (isEmptyAssistantResponseErrorText(msg)) return;
       // Show a user-friendly message for common errors
       if (msg.includes('ETIMEDOUT') || msg.includes('Cannot connect')) {
         toast.error(t('errorMessage'), { description: 'API 连接超时，请检查网络或 API 配置' });
@@ -356,6 +359,22 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
 
     return lastRunningTool?.type?.slice('tool-'.length);
   }, [latestAssistantMessage]);
+
+  const retryAssistantMessageId = latestAssistantMessage?.role === 'assistant'
+    ? latestAssistantMessage.id
+    : undefined;
+
+  const canRetryLatestAssistant = useMemo(() => {
+    if (!retryAssistantMessageId) return false;
+    if (status === 'submitted' || status === 'streaming') return false;
+    if (latestAssistantMetadata?.retryable) return true;
+    return isEmptyAssistantResponseErrorText(chatError?.message);
+  }, [chatError?.message, latestAssistantMetadata?.retryable, retryAssistantMessageId, status]);
+
+  const handleRetryLatestAssistant = useCallback(() => {
+    if (!retryAssistantMessageId) return;
+    void retryAssistantMessage(retryAssistantMessageId);
+  }, [retryAssistantMessage, retryAssistantMessageId]);
 
   const statusBanner = useMemo(() => {
     if (status === 'submitted') {
@@ -595,6 +614,16 @@ export function AIChatContent({ resumeId, hideTitle }: AIChatContentProps) {
                 <div className="mt-1 truncate text-[11px] opacity-80">
                   {statusBanner.detail}
                 </div>
+              )}
+              {canRetryLatestAssistant && (
+                <button
+                  type="button"
+                  className="mt-2 inline-flex cursor-pointer items-center rounded-md border border-current/20 bg-white/60 px-2 py-1 text-[11px] font-medium transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isLoading}
+                  onClick={handleRetryLatestAssistant}
+                >
+                  {t('retry')}
+                </button>
               )}
             </div>
           )}

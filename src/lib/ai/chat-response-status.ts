@@ -2,6 +2,10 @@ import type { AIChatErrorKind, AIChatStatus, AIChatUIMessage, StoredOrderedPart 
 
 export const EMPTY_ASSISTANT_RESPONSE_ERROR_TEXT = 'AI returned an empty response. Please retry.';
 
+export function isEmptyAssistantResponseErrorText(errorText?: string | null) {
+  return errorText?.trim() === EMPTY_ASSISTANT_RESPONSE_ERROR_TEXT;
+}
+
 type SerializedAssistantSummary = {
   content: string;
   orderedParts: StoredOrderedPart[];
@@ -43,6 +47,28 @@ export function hasRenderableAssistantReplySinceRequest(
   if (latestAssistantMessage.id !== baselineAssistantId) return true;
 
   return !baselineAssistantWasRenderable;
+}
+
+type ShouldSurfaceEmptyAssistantResponseErrorInput = {
+  sessionId?: string;
+  terminalSessionId?: string;
+  requestStatus: string;
+  terminalStatus?: AIChatStatus;
+  hasRenderableAssistantReply: boolean;
+};
+
+export function shouldSurfaceEmptyAssistantResponseError({
+  sessionId,
+  terminalSessionId,
+  requestStatus,
+  terminalStatus,
+  hasRenderableAssistantReply,
+}: ShouldSurfaceEmptyAssistantResponseErrorInput) {
+  if (!sessionId || !terminalSessionId) return false;
+  if (terminalSessionId !== sessionId) return false;
+  if (requestStatus !== 'ready') return false;
+  if (terminalStatus) return false;
+  return !hasRenderableAssistantReply;
 }
 
 type ResolveAssistantTerminalOutcomeInput = {
