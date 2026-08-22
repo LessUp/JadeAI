@@ -134,7 +134,7 @@ async function getBrowser() {
  */
 const KEEP_NAMES_SHIM = `window.__name = (f, n) => f;`;
 
-function patchPageForEvaluate(page: import('puppeteer-core').Page): Promise<void> {
+function patchPageForEvaluate(page: import('puppeteer-core').Page) {
   return page.evaluateOnNewDocument(KEEP_NAMES_SHIM);
 }
 
