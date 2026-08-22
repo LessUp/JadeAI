@@ -201,6 +201,14 @@ async function measureHeight(page: Page): Promise<number> {
 
 async function readPaginationContext(page: Page): Promise<PaginationContext> {
   return page.evaluate(() => {
+    // tsx/esbuild 的 keepNames 会把此回调内的局部具名函数包成
+    // `__name(fn, "fn")`，序列化进浏览器后因缺少辅助定义抛 ReferenceError，
+    // 因此先就地提供垫片（生产构建不含 __name 时同样无害）。
+    const globalScope = globalThis as { __name?: <T>(fn: T, name?: string) => T };
+    if (typeof globalScope.__name === 'undefined') {
+      globalScope.__name = <T,>(fn: T): T => fn;
+    }
+
     const root = document.querySelector('.resume-export') as HTMLElement | null;
     const container = document.querySelector('.resume-export > div') as HTMLElement | null;
     const computed = container ? getComputedStyle(container) : null;
