@@ -1,8 +1,12 @@
 import { NextRequest } from 'next/server';
-import { extractAIConfig } from '@/lib/ai/provider';
+import { extractAIConfig, AIConfigError } from '@/lib/ai/provider';
 import { type ModelListItem } from '@/lib/ai/model-list';
+import { resolveCurrentUser } from '@/lib/auth/helpers';
+import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
+
+const RATE_LIMIT = { limit: 30, windowMs: 60_000 };
 
 function modelListError(message: string, status = 502) {
   return Response.json({ models: [], error: message }, { status });
@@ -27,7 +31,22 @@ async function providerFetchError(res: Response, provider: string) {
 }
 
 export async function GET(request: NextRequest) {
-  const { provider, apiKey, baseURL } = extractAIConfig(request);
+  const currentUser = await resolveCurrentUser({ request });
+  if (!currentUser) return new Response('Unauthorized', { status: 401 });
+
+  const rate = checkRateLimit(`models:${currentUser.user.id}`, RATE_LIMIT);
+  if (!rate.allowed) return rateLimitResponse(rate.retryAfterSeconds);
+
+  let config;
+  try {
+    config = extractAIConfig(request);
+  } catch (error) {
+    if (error instanceof AIConfigError) {
+      return modelListError(error.message, 400);
+    }
+    throw error;
+  }
+  const { provider, apiKey, baseURL } = config;
 
   if (!apiKey) {
     return modelListError('API key is required to load models. Configure a local key or server-side AI defaults.', 400);

@@ -8,6 +8,7 @@ import { extractJson } from '@/lib/ai/extract-json';
 import type { ResumeSection } from '@/types/resume';
 import { z } from 'zod/v4';
 import { normalizeResumeSectionContent } from '@/lib/resume-section/schema';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 const LANGUAGE_NAMES: Record<string, string> = {
   zh: 'Simplified Chinese',

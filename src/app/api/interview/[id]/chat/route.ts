@@ -5,6 +5,7 @@ import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
 import { interviewRepository } from '@/lib/db/repositories/interview.repository';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { buildInterviewSystemPrompt } from '@/lib/ai/interview-prompts';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { dbReady } from '@/lib/db';
 import type { InterviewerConfig } from '@/types/interview';
 
@@ -15,6 +16,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const fingerprint = getUserIdFromRequest(request);
     const user = await resolveUser(fingerprint);
     if (!user) return new Response('Unauthorized', { status: 401 });
+
+  const rate = checkRateLimit(`interview-chat:${user.id}`, { limit: 20, windowMs: 60_000 });
+  if (!rate.allowed) return rateLimitResponse(rate.retryAfterSeconds);
 
     const session = await interviewRepository.findSession(sessionId);
     if (!session || session.userId !== user.id) {
@@ -30,7 +34,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     let resumeContent: string | undefined;
     if (session.resumeId) {
-      const resume = await resumeRepository.findById(session.resumeId as string);
+      const resume = await resumeRepository.findByIdForUser(session.resumeId as string, user.id);
       if (resume) {
         resumeContent = JSON.stringify(resume.sections);
       }

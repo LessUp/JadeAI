@@ -88,6 +88,7 @@ export function InterviewRoom({ sessionId, initialMessages }: InterviewRoomProps
   }, [messages, isLoading, isViewingHistory]);
 
   // Switch round: load messages from API
+  const switchRoundRequestRef = useRef(0);
   const handleSwitchRound = useCallback(async (index: number) => {
     const targetRound = rounds[index];
     if (!targetRound) return;
@@ -95,6 +96,7 @@ export function InterviewRoom({ sessionId, initialMessages }: InterviewRoomProps
     setShowTransition(false);
     setLoadingRoundId(targetRound.id);
     setCurrentRoundIndex(index);
+    const requestId = ++switchRoundRequestRef.current;
 
     // Fetch messages for this round
     const fp = localStorage.getItem('jade_fingerprint');
@@ -102,6 +104,8 @@ export function InterviewRoom({ sessionId, initialMessages }: InterviewRoomProps
       const res = await fetch(`/api/interview/${sessionId}`, {
         headers: fp ? { 'x-fingerprint': fp } : {},
       });
+      // Ignore stale responses when rounds were switched again mid-flight.
+      if (requestId !== switchRoundRequestRef.current) return;
       const { rounds: roundsWithMessages } = await res.json();
       const roundData = roundsWithMessages.find((r: any) => r.id === targetRound.id);
 
@@ -116,12 +120,15 @@ export function InterviewRoom({ sessionId, initialMessages }: InterviewRoomProps
       }
     } catch (err) {
       console.error('Failed to load round messages:', err);
+      if (requestId !== switchRoundRequestRef.current) return;
       setMessages([]);
       sentInitRef.current = targetRound.status === 'completed' || targetRound.status === 'skipped'
         ? targetRound.id
         : null;
     } finally {
-      setLoadingRoundId(null);
+      if (requestId === switchRoundRequestRef.current) {
+        setLoadingRoundId(null);
+      }
     }
 
     const isDone = targetRound.status === 'completed' || targetRound.status === 'skipped';

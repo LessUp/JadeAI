@@ -375,6 +375,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
         areResumeDraftSnapshotsEqual(latestDraftSnapshot, requestedDraftSnapshot);
 
       hasWarnedAboutAutoSaveFailure = false;
+      hasWarnedAboutLocalVersionHistoryFailure = false;
       if (unchangedSinceRequest) {
         if (persistedResume) {
           get().setResume(persistedResume);

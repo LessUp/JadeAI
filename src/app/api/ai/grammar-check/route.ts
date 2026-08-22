@@ -7,6 +7,7 @@ import { analysisRepository } from '@/lib/db/repositories/analysis.repository';
 import { grammarCheckInputSchema, grammarCheckOutputSchema } from '@/lib/ai/grammar-check-schema';
 import { extractJson } from '@/lib/ai/extract-json';
 import type { ResumeSection } from '@/types/resume';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 const GRAMMAR_CHECK_PROMPT = `You are an expert resume reviewer and writing coach. Analyze the provided resume sections for writing quality issues.
 

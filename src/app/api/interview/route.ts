@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
 import { interviewRepository } from '@/lib/db/repositories/interview.repository';
+import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { dbReady } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,13 @@ export async function POST(request: NextRequest) {
 
   if (!jobDescription || !jobTitle || !interviewers?.length) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
+  if (resumeId) {
+    const resume = await resumeRepository.findByIdForUser(resumeId, user.id);
+    if (!resume) {
+      return NextResponse.json({ error: 'Resume not found' }, { status: 404 });
+    }
   }
 
   const session = await interviewRepository.createSession({

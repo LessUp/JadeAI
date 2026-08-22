@@ -4,6 +4,7 @@ import { getModel, extractAIConfig, AIConfigError } from '@/lib/ai/provider';
 import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { coverLetterInputSchema } from '@/lib/ai/cover-letter-schema';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 interface CoverLetterOutput {
   title: string;
@@ -70,6 +71,8 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const rate = checkRateLimit(`cover-letter:${user.id}`, { limit: 20, windowMs: 60_000 });
+    if (!rate.allowed) return rateLimitResponse(rate.retryAfterSeconds);
 
     const body = await request.json();
     const parsed = coverLetterInputSchema.safeParse(body);

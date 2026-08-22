@@ -29,7 +29,7 @@
 | 数据库 ORM | Drizzle ORM |
 | 认证 | NextAuth.js (Auth.js v5) |
 | AI | Vercel AI SDK + OpenAI / Anthropic API |
-| PDF 生成 | @react-pdf/renderer |
+| PDF 生成 | Puppeteer + Chromium（HTML → PDF 渲染） |
 | 浏览器指纹 | FingerprintJS |
 | 国际化 | next-intl |
 | 数据校验 | Zod |
@@ -44,8 +44,8 @@ jade-ai/
 ├── .env.local                          # 环境变量（本地）
 ├── .env.example                        # 环境变量模板
 ├── next.config.ts                      # Next.js 配置
-├── drizzle.config.ts                   # Drizzle ORM 配置
-├── tailwind.config.ts                  # Tailwind CSS 配置
+├── drizzle.config.ts                   # Drizzle ORM 配置（SQLite）
+├── drizzle-pg.config.ts                # Drizzle ORM 配置（PostgreSQL 迁移生成）
 ├── package.json
 ├── tsconfig.json
 │
@@ -232,7 +232,7 @@ jade-ai/
 │   │   ├── auth.ts                    # 认证相关类型
 │   │   └── db.ts                      # 数据库相关类型
 │   │
-│   └── middleware.ts                   # Next.js 中间件（认证校验 + 国际化路由）
+│   └── proxy.ts                        # Next.js 中间件（Next 16 由 middleware.ts 更名；国际化路由 + 认证跳转）
 │
 ├── public/
 │   ├── templates/                      # 模板缩略图
@@ -508,28 +508,27 @@ export const config = {
        ▼
 ┌─────────────────────────────┐
 │  选择模板                    │
-│  （经典 / 现代 / 极简）      │
+│  （50 套模板，见 TEMPLATES） │
 └──────────────┬──────────────┘
                │
                ▼
 ┌─────────────────────────────┐
-│  @react-pdf/renderer        │
+│  Puppeteer + Chromium       │
+│  （HTML → PDF 渲染）        │
 │                             │
-│  React 组件映射到 PDF 原语: │
-│  - Document                 │
-│  - Page                     │
-│  - View                     │
-│  - Text                     │
-│  - Link                     │
-│  - Image                    │
+│  - 复用前端模板组件生成 HTML │
+│  - 构建期注入导出用 Tailwind │
+│    CSS（build-export-css）  │
+│  - 本地 Chrome 优先，        │
+│    @sparticuz/chromium 兜底 │
 └──────────────┬──────────────┘
                │
-       ┌───────┴───────┐
-       ▼               ▼
-  客户端生成        服务端生成
-  （浏览器内）     (/api/resume/[id]/export)
-  快速预览         高保真 PDF
-  blob URL         流式返回
+               ▼
+┌─────────────────────────────┐
+│  /api/resume/[id]/export    │
+│  ?format=pdf                │
+│  服务端渲染，流式返回        │
+└─────────────────────────────┘
 ```
 
 ---
@@ -569,7 +568,7 @@ export const config = {
 │  └──────────────────────┬───────────────────────┘      │
 │                         │                              │
 │  ┌──────────────────────┴───────────────────────┐      │
-│  │  middleware.ts                                 │      │
+│  │  proxy.ts (Next 16, 原 middleware.ts)          │      │
 │  │  ├── 检测用户语言偏好（Accept-Language / Cookie）│    │
 │  │  ├── 重定向到带语言前缀的路径                    │    │
 │  │  └── /dashboard → /zh/dashboard 或 /en/dashboard │   │

@@ -4,9 +4,11 @@ import { config } from '@/lib/config';
 import { dbReady } from '@/lib/db';
 import { userRepository } from '@/lib/db/repositories/user.repository';
 import {
+  ANONYMOUS_SESSION_COOKIE,
   createAnonymousSessionCookie,
   getFingerprintIdentityFromRequest,
   normalizeFingerprint,
+  verifyAnonymousSessionCookieValue,
   type CurrentUserIdentity,
   type RequestWithReadableCookies,
 } from './current-user';
@@ -93,6 +95,18 @@ export async function resolveCurrentUser(options: {
 }
 
 export async function resolveUser(fingerprint?: string | null) {
+  // Cookie fallback: when no header fingerprint is supplied (fingerprint mode),
+  // the signed anonymous session cookie still identifies the user.
+  if (!fingerprint && !config.auth.enabled) {
+    try {
+      const cookieStore = await cookies();
+      const cookieValue = cookieStore.get(ANONYMOUS_SESSION_COOKIE)?.value;
+      const cookieFingerprint = verifyAnonymousSessionCookieValue(cookieValue);
+      if (cookieFingerprint) fingerprint = cookieFingerprint;
+    } catch {
+      // Not in a route handler context — header-only resolution applies.
+    }
+  }
   const currentUser = await resolveCurrentUser({ fingerprint });
   return currentUser?.user ?? null;
 }

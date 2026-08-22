@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveCurrentUser } from '@/lib/auth/helpers';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 export const maxDuration = 60;
 
@@ -7,9 +9,17 @@ const GEMINI_ENDPOINT =
 
 export async function POST(request: NextRequest) {
   try {
-    const { image, prompt, requirements, aspectRatio, apiKey } = await request.json();
+    const currentUser = await resolveCurrentUser({ request });
+    if (!currentUser) return new Response('Unauthorized', { status: 401 });
 
-    if (!apiKey || typeof apiKey !== 'string') {
+    const rate = checkRateLimit(`linkedin-photo:${currentUser.user.id}`, { limit: 10, windowMs: 60_000 });
+    if (!rate.allowed) return rateLimitResponse(rate.retryAfterSeconds);
+
+    const apiKey = request.headers.get('x-api-key');
+    const body = await request.json();
+    const { image, prompt, requirements, aspectRatio } = body;
+
+    if (!apiKey) {
       return NextResponse.json(
         { error: 'API Key is required' },
         { status: 400 }
@@ -39,9 +49,12 @@ export async function POST(request: NextRequest) {
 
     // Gemini REST API accepts both camelCase and snake_case in requests,
     // but we use camelCase to match the canonical proto-JSON format.
-    const res = await fetch(`${GEMINI_ENDPOINT}?key=${encodeURIComponent(apiKey)}`, {
+    const res = await fetch(GEMINI_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
       body: JSON.stringify({
         contents: [
           {

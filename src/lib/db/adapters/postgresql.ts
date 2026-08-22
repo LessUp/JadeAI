@@ -28,11 +28,18 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
       });
 
       // Sanity check: if migration tracking says "done" but tables are missing
-      // (e.g. after a manual DROP SCHEMA), reset tracking and re-run
+      // (e.g. after a manual DROP SCHEMA), reset tracking and re-run.
+      // Destructive self-heal is opt-in via DB_ALLOW_SCHEMA_RESET=true.
       const check = await this.db.execute(
         sql`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users') AS ok`
       );
       if (!(check as any)[0]?.ok) {
+        if (process.env.DB_ALLOW_SCHEMA_RESET !== 'true') {
+          throw new Error(
+            '[DB] Migration tracking is stale (users table missing). Refusing to auto-DROP the drizzle schema. ' +
+            'Set DB_ALLOW_SCHEMA_RESET=true to allow automatic schema reset, or repair migrations manually.'
+          );
+        }
         console.warn('[DB] Migration tracking is stale — resetting and re-running');
         await this.db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
         await migrate(this.db, {

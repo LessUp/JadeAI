@@ -5,6 +5,7 @@ import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
 import { interviewRepository } from '@/lib/db/repositories/interview.repository';
 import { interviewReportSchema } from '@/lib/ai/interview-report-schema';
 import { extractJson } from '@/lib/ai/extract-json';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 import { dbReady } from '@/lib/db';
 import type { InterviewerConfig } from '@/types/interview';
 
@@ -16,6 +17,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const fingerprint = getUserIdFromRequest(request);
   const user = await resolveUser(fingerprint);
   if (!user) return new Response('Unauthorized', { status: 401 });
+
+  const rate = checkRateLimit(`interview-report:${user.id}`, { limit: 20, windowMs: 60_000 });
+  if (!rate.allowed) return rateLimitResponse(rate.retryAfterSeconds);
 
   const report = await interviewRepository.findReportBySessionId(sessionId);
   if (!report) return NextResponse.json({ error: 'No report found' }, { status: 404 });

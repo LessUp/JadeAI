@@ -46,6 +46,7 @@ Resume generation guidelines:
 
 import { extractJson } from '@/lib/ai/extract-json';
 import { z } from 'zod/v4';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 const generateResumeOutputSchema = z.object({
   personal_info: z.any(),

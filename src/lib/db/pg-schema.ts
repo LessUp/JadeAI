@@ -3,7 +3,7 @@
  * Used ONLY by drizzle-kit for PG migration generation.
  * Runtime code still imports table objects from schema.ts.
  */
-import { pgTable, text, integer } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, index } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 const epochNow = sql`extract(epoch from now())::integer`;
@@ -59,7 +59,9 @@ export const resumeSections = pgTable('resume_sections', {
   content: text('content').notNull().default('{}'),
   createdAt: integer('created_at').notNull().default(epochNow),
   updatedAt: integer('updated_at').notNull().default(epochNow),
-});
+}, (table) => [
+  index('resume_sections_resume_id_idx').on(table.resumeId),
+]);
 
 export const chatSessions = pgTable('chat_sessions', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -67,7 +69,9 @@ export const chatSessions = pgTable('chat_sessions', {
   title: text('title').notNull().default('新对话'),
   createdAt: integer('created_at').notNull().default(epochNow),
   updatedAt: integer('updated_at').notNull().default(epochNow),
-});
+}, (table) => [
+  index('chat_sessions_resume_id_idx').on(table.resumeId),
+]);
 
 export const chatMessages = pgTable('chat_messages', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -76,7 +80,9 @@ export const chatMessages = pgTable('chat_messages', {
   content: text('content').notNull(),
   metadata: text('metadata').default('{}'),
   createdAt: integer('created_at').notNull().default(epochNow),
-});
+}, (table) => [
+  index('chat_messages_session_id_created_idx').on(table.sessionId, table.createdAt),
+]);
 
 export const resumeShares = pgTable('resume_shares', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -88,7 +94,9 @@ export const resumeShares = pgTable('resume_shares', {
   isActive: integer('is_active').notNull().default(1),
   createdAt: integer('created_at').notNull().default(epochNow),
   updatedAt: integer('updated_at').notNull().default(epochNow),
-});
+}, (table) => [
+  index('resume_shares_resume_id_idx').on(table.resumeId),
+]);
 
 export const jdAnalyses = pgTable('jd_analyses', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -122,7 +130,9 @@ export const interviewSessions = pgTable('interview_sessions', {
   status: text('status').notNull().default('preparing'),
   createdAt: integer('created_at').notNull().default(epochNow),
   updatedAt: integer('updated_at').notNull().default(epochNow),
-});
+}, (table) => [
+  index('interview_sessions_user_id_idx').on(table.userId),
+]);
 
 export const interviewRounds = pgTable('interview_rounds', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -136,7 +146,9 @@ export const interviewRounds = pgTable('interview_rounds', {
   summary: text('summary'),
   createdAt: integer('created_at').notNull().default(epochNow),
   updatedAt: integer('updated_at').notNull().default(epochNow),
-});
+}, (table) => [
+  index('interview_rounds_session_id_idx').on(table.sessionId),
+]);
 
 export const interviewMessages = pgTable('interview_messages', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -145,7 +157,9 @@ export const interviewMessages = pgTable('interview_messages', {
   content: text('content').notNull(),
   metadata: text('metadata').default('{}'),
   createdAt: integer('created_at').notNull().default(epochNow),
-});
+}, (table) => [
+  index('interview_messages_round_id_idx').on(table.roundId),
+]);
 
 export const interviewReports = pgTable('interview_reports', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),

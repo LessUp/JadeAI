@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 export const users = sqliteTable('users', {
@@ -52,7 +52,9 @@ export const resumeSections = sqliteTable('resume_sections', {
   content: text('content', { mode: 'json' }).notNull().default('{}'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-});
+}, (table) => [
+  index('resume_sections_resume_id_idx').on(table.resumeId),
+]);
 
 export const chatSessions = sqliteTable('chat_sessions', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -60,7 +62,9 @@ export const chatSessions = sqliteTable('chat_sessions', {
   title: text('title').notNull().default('新对话'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-});
+}, (table) => [
+  index('chat_sessions_resume_id_idx').on(table.resumeId),
+]);
 
 export const chatMessages = sqliteTable('chat_messages', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -69,7 +73,9 @@ export const chatMessages = sqliteTable('chat_messages', {
   content: text('content').notNull(),
   metadata: text('metadata', { mode: 'json' }).default('{}'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-});
+}, (table) => [
+  index('chat_messages_session_id_created_idx').on(table.sessionId, table.createdAt),
+]);
 
 export const resumeShares = sqliteTable('resume_shares', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -81,7 +87,9 @@ export const resumeShares = sqliteTable('resume_shares', {
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
-});
+}, (table) => [
+  index('resume_shares_resume_id_idx').on(table.resumeId),
+]);
 
 export const jdAnalyses = sqliteTable('jd_analyses', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),

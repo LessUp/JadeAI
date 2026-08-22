@@ -313,13 +313,15 @@ export default function LinkedInPhotoPage() {
     try {
       const res = await fetch('/api/linkedin-photo', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          ...getHeaders(),
+          'x-api-key': apiKey.trim(),
+        },
         body: JSON.stringify({
           image: uploadedImage,
           prompt,
           requirements: requirements.trim(),
           aspectRatio,
-          apiKey: apiKey.trim(),
         }),
       });
 

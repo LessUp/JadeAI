@@ -4,6 +4,7 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { AI_PROVIDER_DEFAULTS, DEFAULT_AI_PROVIDER, normalizeAIProvider, type AIProvider } from '@/lib/ai/shared';
 import { getServerAIConfig } from '@/lib/ai/server-config';
+import { validateAIBaseUrl } from '@/lib/ai/url-validation';
 
 export interface AIConfig {
   provider: AIProvider;
@@ -45,7 +46,14 @@ export function extractAIConfig(request: NextRequest): AIConfig {
   const provider = requestedProvider || serverConfig?.provider || DEFAULT_AI_PROVIDER;
   const defaults = AI_PROVIDER_DEFAULTS[provider];
   const apiKey = suppliedApiKey || serverConfig?.apiKey || '';
-  const baseURL = request.headers.get('x-base-url') || serverConfig?.baseURL || defaults.baseURL;
+  const rawBaseURL = request.headers.get('x-base-url');
+  if (rawBaseURL) {
+    const validation = validateAIBaseUrl(rawBaseURL);
+    if (!validation.ok) {
+      throw new AIConfigError(validation.reason);
+    }
+  }
+  const baseURL = rawBaseURL || serverConfig?.baseURL || defaults.baseURL;
   const model = request.headers.get('x-model') || serverConfig?.model || defaults.model;
   return { provider, apiKey, baseURL, model };
 }

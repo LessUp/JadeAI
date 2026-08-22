@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { shareRepository } from '@/lib/db/repositories/share.repository';
-import { hashPassword } from '@/lib/utils/share';
+import { verifyPassword } from '@/lib/utils/share';
 import { serializePublicResume } from '@/lib/share/public-resume';
 
 export const dynamic = 'force-dynamic';
@@ -28,8 +28,8 @@ export async function GET(
             { status: 401 }
           );
         }
-        const hashedInput = await hashPassword(password);
-        if (hashedInput !== share.password) {
+        const isValid = await verifyPassword(password, share.password);
+        if (!isValid) {
           return NextResponse.json(
             { error: 'Invalid password', passwordRequired: true },
             { status: 401 }
@@ -64,8 +64,8 @@ export async function GET(
           { status: 401 }
         );
       }
-      const hashedInput = await hashPassword(password);
-      if (hashedInput !== resume.sharePassword) {
+      const isValid = await verifyPassword(password, resume.sharePassword);
+      if (!isValid) {
         return NextResponse.json(
           { error: 'Invalid password', passwordRequired: true },
           { status: 401 }
