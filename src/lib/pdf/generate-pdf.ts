@@ -127,10 +127,22 @@ async function getBrowser() {
   return launchBundledChromium();
 }
 
+/**
+ * tsx/esbuild 的 keepNames 会把 page.evaluate 回调内的具名函数包成
+ * `__name(fn, "fn")`。回调被序列化进浏览器后没有该辅助函数，会抛
+ * ReferenceError，因此在新文档创建前先注入垫片。
+ */
+const KEEP_NAMES_SHIM = `window.__name = (f, n) => f;`;
+
+function patchPageForEvaluate(page: import('puppeteer-core').Page): Promise<void> {
+  return page.evaluateOnNewDocument(KEEP_NAMES_SHIM);
+}
+
 export async function generatePdf(html: string, options: PdfOptions = {}): Promise<Buffer> {
   const browser = await getBrowser();
   try {
     const page = await browser.newPage();
+    await patchPageForEvaluate(page);
 
     await page.setViewport({ width: A4_WIDTH_PX, height: A4_HEIGHT_PX });
     await page.emulateMediaType('print');
