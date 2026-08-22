@@ -38,4 +38,4 @@ jobs:
         env:
           # Build-time DB init workaround (matches Dockerfile)
           DB_TYPE: sqlite
-          SQLITE_PATH: :memory:
+          SQLITE_PATH: ":memory:"
