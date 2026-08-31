@@ -18,6 +18,8 @@ export function getModernContactItems(personalInfo: PersonalInfoContent): string
     personalInfo.wechat,
     personalInfo.location,
     personalInfo.website,
+    personalInfo.github,
+    personalInfo.linkedin,
   ].filter(Boolean) as string[];
 }
 

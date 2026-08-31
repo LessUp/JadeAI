@@ -21,6 +21,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const rate = checkRateLimit(`interview-report:${user.id}`, { limit: 20, windowMs: 60_000 });
   if (!rate.allowed) return rateLimitResponse(rate.retryAfterSeconds);
 
+  // Ownership check — the GET handler must scope the report to the caller's session,
+  // matching the POST handler below (otherwise any user could read another's report).
+  const session = await interviewRepository.findSession(sessionId);
+  if (!session || session.userId !== user.id) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   const report = await interviewRepository.findReportBySessionId(sessionId);
   if (!report) return NextResponse.json({ error: 'No report found' }, { status: 404 });
 

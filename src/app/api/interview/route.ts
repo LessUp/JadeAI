@@ -25,8 +25,21 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { jobDescription, jobTitle, resumeId, interviewers } = body;
 
-  if (!jobDescription || !jobTitle || !interviewers?.length) {
+  if (!jobDescription || !jobTitle || !Array.isArray(interviewers) || interviewers.length === 0) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
+  // Validate each interviewer shape before creating anything — an invalid item
+  // (e.g. missing `type`) would otherwise create an orphan session and 500.
+  for (const interviewer of interviewers) {
+    if (!interviewer || typeof interviewer !== 'object' || typeof interviewer.type !== 'string' || !interviewer.type) {
+      return NextResponse.json({ error: 'Invalid interviewer config' }, { status: 400 });
+    }
+  }
+
+  // Cap the number of rounds a single request can create (DB write DoS guard).
+  if (interviewers.length > 20) {
+    return NextResponse.json({ error: 'Too many interviewers' }, { status: 400 });
   }
 
   if (resumeId) {
@@ -44,13 +57,19 @@ export async function POST(request: NextRequest) {
     selectedInterviewers: interviewers,
   });
 
-  for (let i = 0; i < interviewers.length; i++) {
-    await interviewRepository.createRound({
-      sessionId: session!.id,
-      interviewerType: interviewers[i].type,
-      interviewerConfig: interviewers[i],
-      sortOrder: i,
-    });
+  try {
+    for (let i = 0; i < interviewers.length; i++) {
+      await interviewRepository.createRound({
+        sessionId: session!.id,
+        interviewerType: interviewers[i].type,
+        interviewerConfig: interviewers[i],
+        sortOrder: i,
+      });
+    }
+  } catch (error) {
+    // Roll back the partially-created session so we don't leave an orphan row.
+    await interviewRepository.deleteSession(session!.id).catch(() => {});
+    throw error;
   }
 
   const rounds = await interviewRepository.findRoundsBySessionId(session!.id);

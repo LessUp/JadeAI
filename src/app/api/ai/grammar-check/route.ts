@@ -43,6 +43,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const rate = checkRateLimit(`grammar-check:${user.id}`, { limit: 20, windowMs: 60_000 });
+    if (!rate.allowed) return rateLimitResponse(rate.retryAfterSeconds);
+
     const body = await request.json();
     const parsed = grammarCheckInputSchema.safeParse(body);
     if (!parsed.success) {
@@ -91,7 +94,7 @@ export async function POST(request: NextRequest) {
       providerOptions: getJsonProviderOptions(aiConfig),
     });
 
-    console.log('[grammar-check] raw response:\n', result.text);
+    console.log('[grammar-check] response length:', result.text.length);
     const checkResult = extractJson(result.text, grammarCheckOutputSchema);
 
     // Persist to database

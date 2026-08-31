@@ -24,7 +24,7 @@ export function md(text: unknown): string {
       html += `<li>${lm[1]}</li>`;
     } else {
       if (inList) { html += '</ul>'; inList = false; }
-      html += (html && !html.endsWith('>') ? '<br>' : '') + line;
+      html += (html && !/<\/?(ul|ol|li|p|div|h[1-6]|table|tr|td|th)>$/.test(html) ? '<br>' : '') + line;
     }
   }
   if (inList) html += '</ul>';
@@ -42,6 +42,10 @@ export function isSectionEmpty(section: ResumeSection): boolean {
     items?: unknown[];
     categories?: SkillsContent['categories'];
   };
+
+  // Malformed content (null, primitives) must never crash the render path —
+  // treat it as empty so the section is simply hidden.
+  if (!content || typeof content !== 'object') return true;
 
   if (section.type === 'summary') {
     return !String((content as SummaryContent).text ?? '').trim();

@@ -50,5 +50,8 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/(zh|en)/:path*', '/share/:path*'],
+  // Match locale-less deep links too (/dashboard, /templates, …) so the
+  // intlMiddleware can redirect them to the default locale instead of a 404.
+  // Files (paths containing a dot) and framework/api routes are excluded.
+  matcher: ['/', '/((?!api|_next|_vercel|.*\\..*).*)'],
 };

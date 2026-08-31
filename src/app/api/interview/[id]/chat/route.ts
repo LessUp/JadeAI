@@ -27,6 +27,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const { messages, roundId, model: modelId, locale = 'zh' } = await request.json();
 
+    // roundId comes from the request body — verify it belongs to this session
+    // before writing messages/status to it (same guard as /control).
+    if (typeof roundId !== 'string' || !roundId) {
+      return new Response('Round not found', { status: 404 });
+    }
     const round = await interviewRepository.findRound(roundId);
     if (!round || round.sessionId !== sessionId) {
       return new Response('Round not found', { status: 404 });

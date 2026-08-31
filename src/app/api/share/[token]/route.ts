@@ -3,6 +3,7 @@ import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { shareRepository } from '@/lib/db/repositories/share.repository';
 import { verifyPassword } from '@/lib/utils/share';
 import { serializePublicResume } from '@/lib/share/public-resume';
+import { checkRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +14,13 @@ export async function GET(
   try {
     const { token } = await params;
     const password = request.nextUrl.searchParams.get('password');
+
+    // Throttle password-guessing attempts per share link (and client IP) —
+    // without this, PBKDF2 shares can be brute-forced online.
+    if (password) {
+      const rate = checkRateLimit(`share-pw:${token}:${getClientIp(request)}`, { limit: 10, windowMs: 60_000 });
+      if (!rate.allowed) return rateLimitResponse(rate.retryAfterSeconds);
+    }
 
     // 1. Try new resume_shares table first
     const share = await shareRepository.findByToken(token);

@@ -156,8 +156,14 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
       const store = useResumeStore.getState();
       // Cancel any pending autosave to prevent overwriting server data
       if (store._saveTimeout) clearTimeout(store._saveTimeout);
+      useResumeStore.setState({ _saveTimeout: null });
 
-      if (store.currentResume) {
+      // Flush pending local edits first so the reload doesn't clobber them.
+      if (store.isDirty && !store.isSaving) {
+        await store.save({ source: 'autosave' });
+      }
+
+      if (useResumeStore.getState().currentResume) {
         await saveCurrentResumeVersion('checkpoint');
       }
 
@@ -166,6 +172,9 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
         headers: fp ? { 'x-fingerprint': fp } : {},
       });
       if (res.ok) {
+        // If the user started editing while we were fetching, don't overwrite
+        // their newer work with the (older) server snapshot.
+        if (useResumeStore.getState().isDirty) return;
         const resume = await res.json();
         await syncResumeFromServer(resume, {
           recordHistory: true,
@@ -233,13 +242,17 @@ export function useAIChat({ resumeId, sessionId, initialMessages, selectedModel 
     setPreflightError(null);
     setTerminalSessionId(sessionId);
     setLastTerminalStatus(undefined);
-    void sendChatMessage({ text: input }).catch((sendError) => {
+    // Clear the input only once the message was actually submitted — if the
+    // preflight (resume sync) fails, the send throws and the typed text would
+    // otherwise be wiped for nothing.
+    void sendChatMessage({ text: input }).then(() => {
+      setInput('');
+    }).catch((sendError) => {
       console.error('Failed to send AI message:', sendError);
       resetStreamActivity();
       setTerminalSessionId(sessionId);
       setLastTerminalStatus('error');
     });
-    setInput('');
   }, [clearError, input, localMessages, resetStreamActivity, sendChatMessage, sessionId]);
 
   const latestAssistantText = getLatestAssistantText(messages);

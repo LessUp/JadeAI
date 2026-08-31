@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { resolveCurrentUser } from '@/lib/auth/helpers';
+import { safeNormalizeResumeSectionContent } from '@/lib/resume-section/schema';
 import type { ResumeSection } from '@/types/resume';
 
 type IncomingSection = Pick<ResumeSection, 'id' | 'type' | 'title' | 'sortOrder' | 'visible' | 'content'>;
@@ -72,7 +73,9 @@ export async function PUT(
           title: section.title,
           sortOrder: Number.isFinite(section.sortOrder) ? section.sortOrder : index,
           visible: section.visible !== false,
-          content: section.content,
+          // Normalize content so null/primitive payloads can never corrupt the
+          // stored resume and break rendering/export later.
+          content: safeNormalizeResumeSectionContent(section.type, section.content),
         })),
       } : {}),
     });

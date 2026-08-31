@@ -12,6 +12,9 @@ export interface ResumeSectionsLike<TSection extends ResumeSectionLike = ResumeS
 
 function isSectionEmpty(section: ResumeSectionLike): boolean {
   const content = section.content as any;
+  // Malformed content (null, primitives) must never break template rendering —
+  // treat it as empty so the section is filtered out.
+  if (!content || typeof content !== 'object') return true;
   if (section.type === 'summary') {
     return !(content as SummaryContent).text;
   }

@@ -330,10 +330,15 @@ Rules:
 
         await Promise.all(Array.from({ length: Math.min(CONCURRENCY, sections.length) }, () => worker()));
 
-        // Apply results to DB
+        // Apply results to DB — only for sections that actually belong to this resume
+        const ownedSectionIds = new Set(resume.sections.map((section: any) => section.id));
         for (const r of results) {
           if (!r.ok) { failed++; continue; }
           const translated = r.data;
+          if (!ownedSectionIds.has(translated.sectionId)) {
+            failed++;
+            continue;
+          }
           const sectionType = resume.sections.find((section: any) => section.id === translated.sectionId)?.type;
           const normalizedContent = sectionType
             ? normalizeResumeSectionContent(sectionType, translated.content)
@@ -346,11 +351,15 @@ Rules:
           succeeded++;
         }
 
-        // Update resume language
-        await resumeRepository.update(resumeId, { language: targetLanguage });
+        // Only mark the resume as translated when at least one section succeeded —
+        // otherwise the metadata would claim a translation that didn't happen.
+        const success = succeeded > 0;
+        if (success) {
+          await resumeRepository.update(resumeId, { language: targetLanguage });
+        }
 
         return {
-          success: true,
+          success,
           language: targetLanguage,
           translatedSections: succeeded,
           failedSections: failed,

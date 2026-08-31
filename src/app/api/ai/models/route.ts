@@ -73,10 +73,14 @@ export async function GET(request: NextRequest) {
       }
 
       case 'gemini': {
+        // Pass the key via a header, not the URL query string, so it can't
+        // leak into upstream/proxy access logs.
         const url = baseURL
-          ? `${baseURL.replace(/\/$/, '')}/models?key=${apiKey}`
-          : `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
-        const res = await fetch(url);
+          ? `${baseURL.replace(/\/$/, '')}/models`
+          : 'https://generativelanguage.googleapis.com/v1beta/models';
+        const res = await fetch(url, {
+          headers: { 'x-goog-api-key': apiKey },
+        });
         if (!res.ok) return providerFetchError(res, provider);
         const data = await res.json();
         models = (data.models ?? []).map((m: { name: string }) => ({

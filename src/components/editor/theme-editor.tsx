@@ -37,6 +37,7 @@ import {
   CHINESE_RESUME_FONT_STACK,
   CODE_NEW_ROMAN_RESOURCE_HAN_STACK,
   FONT_STACK_OPTIONS,
+  resolveFontStack,
 } from '@/lib/font-stacks';
 import { templateLabelsMap } from '@/lib/template-labels';
 import { TemplateThumbnail } from '@/components/dashboard/template-thumbnail';
@@ -263,6 +264,25 @@ export function ThemeEditor() {
     [currentResume?.themeConfig]
   );
 
+  // The stored fontFamily is the expanded stack (e.g. `Inter, "Noto Sans SC",
+  // sans-serif`), while the dropdown options use bare family names. Map the
+  // stored value back to its option so the Select can display the selection.
+  const fontSelectValue = useMemo(() => {
+    const match = FONT_STACK_OPTIONS.find((option) => resolveFontStack(option.value) === themeConfig.fontFamily);
+    return match?.value;
+  }, [themeConfig.fontFamily]);
+
+  // The custom stack input needs a raw, un-normalized draft while typing —
+  // normalizing on every keystroke would eat quotes/commas and jump the value.
+  // Reset the draft whenever the stored value changes externally (e.g. the
+  // dropdown) via the render-time adjust pattern instead of an effect.
+  const [fontDraft, setFontDraft] = useState(themeConfig.fontFamily);
+  const [syncedFontFamily, setSyncedFontFamily] = useState(themeConfig.fontFamily);
+  if (themeConfig.fontFamily !== syncedFontFamily) {
+    setSyncedFontFamily(themeConfig.fontFamily);
+    setFontDraft(themeConfig.fontFamily);
+  }
+
   const updateTheme = useCallback(
     (updates: Partial<ThemeConfig>) => {
       if (!currentResume) return;
@@ -424,11 +444,11 @@ export function ThemeEditor() {
             <div className="space-y-1.5">
               <Label className="text-xs text-zinc-600 dark:text-zinc-400">{t('fontFamily')}</Label>
               <Select
-                value={themeConfig.fontFamily}
+                value={fontSelectValue ?? undefined}
                 onValueChange={(v) => updateTheme({ fontFamily: v })}
               >
                 <SelectTrigger className="w-full h-8 text-xs">
-                  <SelectValue />
+                  <SelectValue placeholder={themeConfig.fontFamily} />
                 </SelectTrigger>
                 <SelectContent>
                   {FONT_STACK_OPTIONS.map((font) => (
@@ -443,8 +463,17 @@ export function ThemeEditor() {
             <div className="space-y-1.5">
               <Label className="text-xs text-zinc-600 dark:text-zinc-400">{t('customFontStack')}</Label>
               <Input
-                value={themeConfig.fontFamily}
-                onChange={(e) => updateTheme({ fontFamily: e.target.value })}
+                value={fontDraft}
+                onChange={(e) => setFontDraft(e.target.value)}
+                onBlur={() => {
+                  const trimmed = fontDraft.trim();
+                  if (trimmed && trimmed !== themeConfig.fontFamily) {
+                    updateTheme({ fontFamily: trimmed });
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                }}
                 placeholder={`"CodeNewRoman Nerd Font Mono", "Resource Han Rounded CN", "Noto Sans SC", monospace, sans-serif`}
                 className="text-xs"
               />

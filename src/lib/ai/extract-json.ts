@@ -188,6 +188,8 @@ export function extractJson<T>(text: string, schema: ZodType<T>): T {
     } catch {}
   }
 
-  console.error('[extractJson] FULL failed text:\n', cleaned);
+  // Log only a truncated excerpt — the full AI response can contain resume PII
+  // (names, phones, emails) that must not land in server logs.
+  console.error('[extractJson] FAILED text (truncated):\n', cleaned.slice(0, 500));
   throw new Error(`Failed to extract valid JSON from AI response (length=${text.length})`);
 }

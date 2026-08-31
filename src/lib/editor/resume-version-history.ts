@@ -118,7 +118,9 @@ export async function saveResumeVersion(input: {
 
     store.put(record);
 
-    for (const staleVersion of existingVersions.slice(MAX_RESUME_VERSIONS)) {
+    // Keep at most MAX_RESUME_VERSIONS records including the one just
+    // inserted — slice before-insert minus one so the newest stays.
+    for (const staleVersion of existingVersions.slice(MAX_RESUME_VERSIONS - 1)) {
       store.delete(staleVersion.id);
     }
 

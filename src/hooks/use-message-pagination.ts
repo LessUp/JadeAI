@@ -33,6 +33,9 @@ export function useMessagePagination() {
         headers: getHeaders(),
         signal: controller.signal,
       });
+      // Non-JSON error bodies (401/404 text) would throw in res.json() — bail
+      // out cleanly instead of silently showing an empty history.
+      if (!res.ok) return [];
       const data = await res.json();
 
       // Guard against stale responses after session switch
