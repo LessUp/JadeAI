@@ -70,7 +70,7 @@ export function md(text: unknown): string {
       html += `<li>${lm[1]}</li>`;
     } else {
       if (inList) { html += '</ul>'; inList = false; }
-      html += (html && !html.endsWith('>') ? '<br>' : '') + line;
+      html += (html && !/<\/?(ul|ol|li|p|div|h[1-6]|table|tr|td|th)>$/.test(html) ? '<br>' : '') + line;
     }
   }
   if (inList) html += '</ul>';
@@ -81,6 +81,9 @@ export function md(text: unknown): string {
 
 export function isSectionEmpty(section: Section): boolean {
   const content = section.content as any;
+  // Malformed content (null, primitives) must never break export rendering —
+  // treat it as empty so the section is filtered out.
+  if (!content || typeof content !== 'object') return true;
   if (section.type === 'summary') return !(content as SummaryContent).text;
   if (section.type === 'skills') {
     const categories = (content as SkillsContent).categories;

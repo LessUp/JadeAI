@@ -19,6 +19,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { action, roundId, locale = 'zh' } = await request.json();
 
+  // roundId comes from the request body — it must belong to this session,
+  // otherwise any user could flip or inject messages into other users' rounds.
+  const rounds = await interviewRepository.findRoundsBySessionId(sessionId);
+  const roundIds = new Set(rounds.map((r: InterviewRoundRecord) => r.id));
+  if (roundId && !roundIds.has(roundId)) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   let systemMessage = '';
   switch (action) {
     case 'skip':
@@ -33,7 +41,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         await interviewRepository.updateRoundStatus(roundId, 'completed');
       }
       // Advance to next round or complete session
-      const rounds = await interviewRepository.findRoundsBySessionId(sessionId);
       const currentIndex = rounds.findIndex((r: InterviewRoundRecord) => r.id === roundId);
       const nextRound = currentIndex >= 0 ? rounds[currentIndex + 1] : undefined;
       if (nextRound) {

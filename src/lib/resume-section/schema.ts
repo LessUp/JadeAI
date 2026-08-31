@@ -156,3 +156,45 @@ export function normalizeResumeSectionContent(type: string, content: unknown): u
   if (!isResumeSectionType(type)) return content;
   return schemaByType[type].parse(content);
 }
+
+/** Valid, empty content for a section type — used as a safe fallback. */
+export function emptyResumeSectionContent(type: string): unknown {
+  if (type === 'summary') return { text: '' };
+  if (type === 'skills') return { categories: [] };
+  if (type === 'personal_info') return {};
+  return { items: [] };
+}
+
+function ensureSectionItemIds(content: unknown): unknown {
+  if (!content || typeof content !== 'object') return content;
+  const obj = content as Record<string, unknown>;
+  const withIds = (value: unknown) => {
+    if (!Array.isArray(value)) return value;
+    return value.map((entry) => {
+      if (typeof entry !== 'object' || entry === null) return entry;
+      if ('id' in entry && (entry as { id?: unknown }).id) return entry;
+      return { ...entry, id: crypto.randomUUID() };
+    });
+  };
+  if (Array.isArray(obj.items)) obj.items = withIds(obj.items);
+  if (Array.isArray(obj.categories)) obj.categories = withIds(obj.categories);
+  return obj;
+}
+
+/**
+ * Normalize content for storage without throwing — unlike
+ * `normalizeResumeSectionContent`, this coerces AI-produced or imported
+ * content (missing ids, primitives instead of objects) into a valid
+ * structure and falls back to an empty section on malformed input, so a
+ * bad section can never corrupt a resume or break rendering/export.
+ */
+export function safeNormalizeResumeSectionContent(type: string, content: unknown): unknown {
+  if (!isResumeSectionType(type)) {
+    return content && typeof content === 'object' ? content : {};
+  }
+  try {
+    return schemaByType[type].parse(ensureSectionItemIds(content));
+  } catch {
+    return emptyResumeSectionContent(type);
+  }
+}

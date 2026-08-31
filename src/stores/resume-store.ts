@@ -150,9 +150,11 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
     const { _saveTimeout } = get();
     if (_saveTimeout) clearTimeout(_saveTimeout);
 
-    // Normalize: ensure all items/categories in section content have id fields
+    // Normalize: ensure all items/categories in section content have id fields.
+    // Work on a clone so the caller's object is never mutated in place (the
+    // clone also keeps prior zustand snapshots intact).
     const sections = (resume.sections || []).map((s) => {
-      const content = s.content as unknown as Record<string, unknown>;
+      const content = structuredClone((s.content ?? {}) as unknown) as Record<string, unknown>;
       const withStableIds = (value: unknown) => {
         if (!Array.isArray(value)) return value;
 
@@ -350,8 +352,17 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
         }),
       });
 
+      // Guard against a stale save applying its response to the wrong resume:
+      // if the store was cleared (unmount) or now shows a different resume
+      // (the user navigated while this PUT was in flight), don't write state
+      // back — doing so would dirty/corrupt the other resume's view.
+      const storeResumeAfterSave = get().currentResume;
+      if (!storeResumeAfterSave || storeResumeAfterSave.id !== currentResume.id) return;
+
       if (!response.ok) {
         const data = await response.json().catch(() => null);
+        // Store was reset while the save was in flight — no one is listening.
+        if (!get().currentResume) return;
         throw new Error(
           typeof data?.error === 'string' ? data.error : 'Failed to save resume'
         );
@@ -384,8 +395,10 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
         }
       } else {
         set((state) => {
+          // Store was reset while the save was in flight (e.g. editor unmount) —
+          // nothing left to re-save, and marking dirty would leave residue.
           if (!state.currentResume) {
-            return { isDirty: true };
+            return {};
           }
           return {
             currentResume: persistedResume
@@ -397,7 +410,9 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
             isDirty: true,
           };
         });
-        get()._scheduleSave();
+        if (get().currentResume) {
+          get()._scheduleSave();
+        }
       }
 
       const snapshotForVersion = unchangedSinceRequest
@@ -423,7 +438,13 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
         handleLocalVersionHistoryFailure(error);
       }
     } finally {
-      set({ isSaving: false });
+      // Only clear isSaving for the resume this save belongs to — if the user
+      // already navigated to another resume, its own in-flight save flag must
+      // not be touched (clearing it could allow a duplicate concurrent PUT).
+      const currentStoreResume = get().currentResume;
+      if (!currentStoreResume || currentStoreResume.id === currentResume.id) {
+        set({ isSaving: false });
+      }
     }
   },
 
@@ -450,8 +471,17 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
   },
 
   reset: () => {
-    const { _saveTimeout } = get();
+    const { _saveTimeout, currentResume, isDirty, isSaving } = get();
     if (_saveTimeout) clearTimeout(_saveTimeout);
+    // Flush any edits still pending in the autosave window before clearing the
+    // store — the editor page unmounts right after reset(), so cancelling the
+    // timer would otherwise silently discard them. save() snapshots the draft
+    // synchronously, so the PUT is issued with the pre-reset state.
+    if (currentResume && isDirty && !isSaving) {
+      void get().save({ source: 'autosave' }).catch(() => {
+        // Best-effort flush on unmount.
+      });
+    }
     set({
       currentResume: null,
       sections: [],

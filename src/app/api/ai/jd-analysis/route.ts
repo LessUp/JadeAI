@@ -30,6 +30,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const rate = checkRateLimit(`jd-analysis:${user.id}`, { limit: 20, windowMs: 60_000 });
+    if (!rate.allowed) return rateLimitResponse(rate.retryAfterSeconds);
+
     const body = await request.json();
     const parsed = jdAnalysisInputSchema.safeParse(body);
     if (!parsed.success) {

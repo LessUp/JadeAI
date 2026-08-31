@@ -38,6 +38,9 @@ export function normalizeWorkExperienceMetadataForDisplay<T extends ResumeLike>(
     if (section.type !== 'work_experience') return section;
 
     const content = section.content as WorkExperienceContent;
+    // Guard against malformed stored content (null/primitive) that could
+    // otherwise crash the preview render path.
+    if (!content || typeof content !== 'object') return section;
     const items = content.items || [];
     let sectionChanged = false;
 

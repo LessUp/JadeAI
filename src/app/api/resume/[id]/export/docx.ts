@@ -355,11 +355,14 @@ function sectionHeading(title: string, theme: DocxTheme): DocxChild[] {
 
 // ─── Header (dark-bg vs light) ───────────────────────────────
 
-function tryParseImage(avatar: string): { data: Buffer; ext: 'png' | 'jpg' | 'gif' } | null {
-  const m = avatar.match(/^data:image\/(png|jpe?g|gif);base64,(.+)$/);
+function tryParseImage(avatar: string): { data: Buffer; ext: 'png' | 'jpg' } | null {
+  // Only png/jpg are embeddable via docx ImageRun — gif is rejected here so
+  // we never declare a MIME type that doesn't match the actual data (Word
+  // refuses such images).
+  const m = avatar.match(/^data:image\/(png|jpe?g);base64,(.+)$/);
   if (!m) return null;
   try {
-    return { data: Buffer.from(m[2], 'base64'), ext: m[1] === 'jpeg' ? 'jpg' : m[1] as 'png' | 'gif' };
+    return { data: Buffer.from(m[2], 'base64'), ext: m[1] === 'jpeg' ? 'jpg' : 'png' };
   } catch { return null; }
 }
 

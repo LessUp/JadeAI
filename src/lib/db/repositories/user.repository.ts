@@ -25,12 +25,20 @@ export const userRepository = {
     if (existing) return existing;
 
     const id = crypto.randomUUID();
-    await db.insert(users).values({
-      id,
-      fingerprint,
-      authType: 'fingerprint',
-      name: 'Anonymous User',
-    });
+    try {
+      await db.insert(users).values({
+        id,
+        fingerprint,
+        authType: 'fingerprint',
+        name: 'Anonymous User',
+      });
+    } catch (error) {
+      // Two concurrent first requests with the same fingerprint can race the
+      // unique constraint — treat the loser as a normal "already exists" hit.
+      const winner = await this.findByFingerprint(fingerprint);
+      if (winner) return winner;
+      throw error;
+    }
 
     // Clone demo user's resumes, or create a sample if seed hasn't run
     const demoUser = await this.findByFingerprint('demo-fingerprint');

@@ -4,6 +4,7 @@ import { getModel, extractAIConfig, getJsonProviderOptions, AIConfigError } from
 import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { generateResumeInputSchema, type GenerateResumeOutput } from '@/lib/ai/generate-resume-schema';
+import { TEMPLATES, type Template } from '@/lib/constants';
 
 const SECTION_TITLES: Record<string, Record<string, string>> = {
   zh: {
@@ -47,6 +48,7 @@ Resume generation guidelines:
 import { extractJson } from '@/lib/ai/extract-json';
 import { z } from 'zod/v4';
 import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
+import { safeNormalizeResumeSectionContent } from '@/lib/resume-section/schema';
 
 const generateResumeOutputSchema = z.object({
   personal_info: z.any(),
@@ -64,6 +66,9 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const rate = checkRateLimit(`generate-resume:${user.id}`, { limit: 10, windowMs: 60_000 });
+    if (!rate.allowed) return rateLimitResponse(rate.retryAfterSeconds);
 
     const body = await request.json();
     const parsed = generateResumeInputSchema.safeParse(body);
@@ -120,7 +125,7 @@ Respond with JSON only.`,
     const newResume = await resumeRepository.create({
       userId: user.id,
       title: resumeTitle,
-      template: template || 'classic',
+      template: TEMPLATES.includes(template as Template) ? template : 'classic',
       language: lang,
     });
 
@@ -134,7 +139,7 @@ Respond with JSON only.`,
 
     for (let i = 0; i < sectionTypes.length; i++) {
       const type = sectionTypes[i];
-      const content = generatedData[type];
+      const content = safeNormalizeResumeSectionContent(type, generatedData[type]);
 
       await resumeRepository.createSection({
         resumeId: newResume.id,

@@ -57,7 +57,8 @@ async function translateSection(
   section: { sectionId: string; type: string; title: string; content: unknown },
   targetLanguage: string,
   model: LanguageModel,
-  aiConfig: AIConfig
+  aiConfig: AIConfig,
+  request: NextRequest
 ) {
   const result = await generateText({
     model,
@@ -65,6 +66,9 @@ async function translateSection(
     system: getSectionTranslatePrompt(targetLanguage),
     prompt: `Translate this resume section. Return JSON with keys: sectionId, title, content.\n\n${JSON.stringify(section)}`,
     providerOptions: getJsonProviderOptions(aiConfig),
+    // Propagate client disconnect so a closed tab doesn't keep every
+    // section translation running (and holding memory) server-side.
+    abortSignal: request.signal,
   });
 
   return extractJson(result.text, singleSectionSchema);
@@ -105,6 +109,9 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
+
+    const rate = checkRateLimit(`translate:${user.id}`, { limit: 20, windowMs: 60_000 });
+    if (!rate.allowed) return rateLimitResponse(rate.retryAfterSeconds);
 
     const body = await request.json();
     const parsed = translateInputSchema.safeParse(body);
@@ -206,7 +213,7 @@ export async function POST(request: NextRequest) {
             sectionsData,
             MAX_CONCURRENCY,
             async (section) => {
-              const translated = await translateSection(section, targetLanguage, model, aiConfig);
+              const translated = await translateSection(section, targetLanguage, model, aiConfig, request);
 
               // Merge back stripped fields (e.g. avatar)
               const saved = strippedFields.get(translated.sectionId);
@@ -248,8 +255,11 @@ export async function POST(request: NextRequest) {
             );
           }
 
-          // Update resume language
-          await resumeRepository.update(targetResumeId, { language: targetLanguage });
+          // Only update the resume language when at least one section was
+          // actually translated — otherwise the metadata lies about the result.
+          if (completed - failedCount > 0) {
+            await resumeRepository.update(targetResumeId, { language: targetLanguage });
+          }
         } catch (err) {
           console.error('Unexpected error during translation:', err);
         }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
 import { interviewRepository } from '@/lib/db/repositories/interview.repository';
 import { dbReady } from '@/lib/db';
+import type { InterviewSessionStatus } from '@/types/interview';
 type InterviewRoundRecord = Awaited<ReturnType<typeof interviewRepository.findRoundsBySessionId>>[number];
 
 export const dynamic = 'force-dynamic';
@@ -45,8 +46,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   const { status } = await request.json();
-  if (status) {
-    await interviewRepository.updateSessionStatus(id, status);
+  // Status must be one of the valid session states — validating here stops
+  // arbitrary strings from being stored (SQLite doesn't enforce the enum).
+  const VALID_STATUSES: InterviewSessionStatus[] = ['preparing', 'in_progress', 'paused', 'completed'];
+  if (status !== undefined) {
+    if (typeof status !== 'string' || !VALID_STATUSES.includes(status as InterviewSessionStatus)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+    }
+    await interviewRepository.updateSessionStatus(id, status as InterviewSessionStatus);
   }
 
   const updated = await interviewRepository.findSession(id);

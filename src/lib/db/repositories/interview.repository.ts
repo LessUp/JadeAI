@@ -1,4 +1,4 @@
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, sql } from 'drizzle-orm';
 import { db } from '../index';
 import { interviewSessions, interviewRounds, interviewMessages, interviewReports } from '../schema';
 import type {
@@ -92,9 +92,8 @@ export const interviewRepository = {
   },
 
   async incrementQuestionCount(roundId: string) {
-    const rows = await db.select({ questionCount: interviewRounds.questionCount }).from(interviewRounds).where(eq(interviewRounds.id, roundId)).limit(1);
-    const current = rows[0]?.questionCount ?? 0;
-    await db.update(interviewRounds).set({ questionCount: current + 1, updatedAt: new Date() }).where(eq(interviewRounds.id, roundId));
+    // Atomic increment — read-then-write would lose updates under concurrency.
+    await db.update(interviewRounds).set({ questionCount: sql`${interviewRounds.questionCount} + 1`, updatedAt: new Date() }).where(eq(interviewRounds.id, roundId));
   },
 
   async setRoundSummary(roundId: string, summary: RoundSummary) {

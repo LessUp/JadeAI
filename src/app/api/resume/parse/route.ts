@@ -5,6 +5,7 @@ import { getModel, extractAIConfig, getJsonProviderOptions, AIConfigError } from
 import { resolveUser, getUserIdFromRequest } from '@/lib/auth/helpers';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import type { ParsedResume } from '@/lib/ai/parse-schema';
+import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit';
 
 const ACCEPTED_TYPES = [
   'application/pdf',
@@ -14,6 +15,11 @@ const ACCEPTED_TYPES = [
 ];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+// Rendering a scanned PDF page to a 2× PNG is memory-heavy — a crafted
+// PDF with thousands of pages must not OOM the server (10MB cap does not
+// bound page count).
+const MAX_PDF_PAGES = 30;
 
 const SYSTEM_PROMPT = `You are a resume parser. Extract ALL information from the resume into the EXACT JSON schema below.
 
@@ -37,6 +43,9 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const rate = checkRateLimit(`resume-parse:${user.id}`, { limit: 10, windowMs: 60_000 });
+    if (!rate.allowed) return rateLimitResponse(rate.retryAfterSeconds);
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -171,13 +180,18 @@ async function loadMupdfDoc(buffer: Uint8Array) {
 
 function extractPdfText(buffer: Buffer): Promise<string> {
   return loadMupdfDoc(new Uint8Array(buffer)).then(({ doc }) => {
-    const pageCount = doc.countPages();
-    const parts: string[] = [];
-    for (let i = 0; i < pageCount; i++) {
-      const page = doc.loadPage(i);
-      parts.push(page.toStructuredText('preserve-whitespace').asText());
+    try {
+      const pageCount = Math.min(doc.countPages(), MAX_PDF_PAGES);
+      const parts: string[] = [];
+      for (let i = 0; i < pageCount; i++) {
+        const page = doc.loadPage(i);
+        parts.push(page.toStructuredText('preserve-whitespace').asText());
+      }
+      return parts.join('\n').trim();
+    } finally {
+      // mupdf documents hold WASM/native memory — always release them.
+      doc.destroy();
     }
-    return parts.join('\n').trim();
   }).catch((e) => {
     console.warn('[parse] mupdf text extraction failed:', (e as Error).message);
     return '';
@@ -186,22 +200,26 @@ function extractPdfText(buffer: Buffer): Promise<string> {
 
 async function pdfPagesToImages(buffer: Uint8Array): Promise<Uint8Array[]> {
   const { mupdf, doc } = await loadMupdfDoc(buffer);
-  const pageCount = doc.countPages();
-  const images: Uint8Array[] = [];
+  try {
+    const pageCount = Math.min(doc.countPages(), MAX_PDF_PAGES);
+    const images: Uint8Array[] = [];
 
-  for (let i = 0; i < pageCount; i++) {
-    const page = doc.loadPage(i);
-    // Render at 2x scale for better OCR quality
-    const pixmap = page.toPixmap(
-      mupdf.Matrix.scale(2, 2),
-      mupdf.ColorSpace.DeviceRGB,
-      false, // no alpha
-      true,  // annots
-    );
-    images.push(pixmap.asPNG());
+    for (let i = 0; i < pageCount; i++) {
+      const page = doc.loadPage(i);
+      // Render at 2x scale for better OCR quality
+      const pixmap = page.toPixmap(
+        mupdf.Matrix.scale(2, 2),
+        mupdf.ColorSpace.DeviceRGB,
+        false, // no alpha
+        true,  // annots
+      );
+      images.push(pixmap.asPNG());
+    }
+
+    return images;
+  } finally {
+    doc.destroy();
   }
-
-  return images;
 }
 
 // ─── JSON Parsing ────────────────────────────────────────────────────────────

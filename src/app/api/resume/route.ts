@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { resumeRepository } from '@/lib/db/repositories/resume.repository';
 import { resolveCurrentUser } from '@/lib/auth/helpers';
 import { DEFAULT_SECTIONS } from '@/lib/constants';
+import { isResumeSectionType, safeNormalizeResumeSectionContent } from '@/lib/resume-section/schema';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,16 +41,20 @@ export async function POST(request: NextRequest) {
 
     if (resume) {
       if (Array.isArray(sections) && sections.length > 0) {
-        // Import mode: use provided sections, ignore original ids
+        // Import mode: use provided sections, ignore original ids.
+        // Normalize each section's content so malformed imports (null content,
+        // primitives, untyped JSON) can never crash rendering or export later.
         for (let i = 0; i < sections.length; i++) {
           const s = sections[i];
+          const type = isResumeSectionType(s?.type) ? s.type : 'custom';
           await resumeRepository.createSection({
             resumeId: resume.id,
-            type: s.type,
-            title: s.title,
+            type,
+            // title is NOT NULL in the schema — default to a safe fallback.
+            title: typeof s?.title === 'string' && s.title ? s.title : '未命名板块',
             sortOrder: i,
-            visible: s.visible,
-            content: s.content,
+            visible: s?.visible !== false,
+            content: safeNormalizeResumeSectionContent(type, s?.content),
           });
         }
       } else {

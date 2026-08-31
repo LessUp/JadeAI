@@ -7,6 +7,17 @@ import type {
 } from '@/types/interview';
 import { BRAND_COLORS } from '@/lib/brand-constants';
 
+/** Escape text for safe HTML interpolation — report content can contain
+ *  user-supplied interview transcripts, so it must never be inserted raw. */
+function esc(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function getGradeLabel(score: number): { zh: string; color: string } {
   if (score >= 90) return { zh: '优秀', color: '#16a34a' };
   if (score >= 75) return { zh: '良好', color: '#2563eb' };
@@ -38,7 +49,7 @@ export function generateInterviewReportHtml(report: InterviewReport, session: In
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<title>面试报告 - ${session.jobTitle}</title>
+<title>面试报告 - ${esc(session.jobTitle)}</title>
 <style>
   @page { margin: 15mm 12mm; size: A4; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -104,14 +115,14 @@ export function generateInterviewReportHtml(report: InterviewReport, session: In
       <div class="score-label">${grade.zh}</div>
     </div>
     <div class="header-info">
-      <h1>${session.jobTitle}</h1>
-      <p>${date} · ${rounds.length} 轮面试 · ${rounds.reduce((s: number, r: RoundEvaluation) => s + r.questions.length, 0)} 题</p>
+      <h1>${esc(session.jobTitle)}</h1>
+      <p>${esc(date)} · ${rounds.length} 轮面试 · ${rounds.reduce((s: number, r: RoundEvaluation) => s + r.questions.length, 0)} 题</p>
     </div>
   </div>
 
   <div class="section">
     <div class="section-title">总体评价</div>
-    <div class="feedback">${report.overallFeedback}</div>
+    <div class="feedback">${esc(report.overallFeedback)}</div>
   </div>
 
   <div class="section">
@@ -119,9 +130,9 @@ export function generateInterviewReportHtml(report: InterviewReport, session: In
     <div class="dim-grid">
       ${dimensions.map(d => `
         <div class="dim-item">
-          <span class="dim-name">${d.dimension}</span>
-          <div class="dim-bar-outer"><div class="dim-bar-fill" style="width:${d.score}%"></div></div>
-          <span class="dim-score">${d.score}</span>
+          <span class="dim-name">${esc(d.dimension)}</span>
+          <div class="dim-bar-outer"><div class="dim-bar-fill" style="width:${esc(d.score)}%"></div></div>
+          <span class="dim-score">${esc(d.score)}</span>
         </div>
       `).join('')}
     </div>
@@ -132,10 +143,10 @@ export function generateInterviewReportHtml(report: InterviewReport, session: In
     ${rounds.map(r => `
       <div class="round">
         <div class="round-header">
-          <span class="round-name">${r.interviewerName} · ${r.interviewerType}</span>
-          <span class="round-score">${r.score}</span>
+          <span class="round-name">${esc(r.interviewerName)} · ${esc(r.interviewerType)}</span>
+          <span class="round-score">${esc(r.score)}</span>
         </div>
-        <div class="round-feedback">${r.feedback}</div>
+        <div class="round-feedback">${esc(r.feedback)}</div>
         ${r.questions.map((q, qi) => `
           <div class="question">
             <div class="q-header">
@@ -145,11 +156,11 @@ export function generateInterviewReportHtml(report: InterviewReport, session: In
               ${q.hinted ? '<span class="q-tag q-tag-hint">使用提示</span>' : ''}
               ${q.skipped ? '<span class="q-tag q-tag-skip">已跳过</span>' : ''}
             </div>
-            <div class="q-text">${q.question}</div>
-            <div class="q-answer">${q.answerSummary}</div>
-            ${q.highlights.length ? `<div class="q-detail"><span class="q-detail-label q-detail-green">亮点：</span>${q.highlights.join('；')}</div>` : ''}
-            ${q.weaknesses.length ? `<div class="q-detail"><span class="q-detail-label q-detail-red">不足：</span>${q.weaknesses.join('；')}</div>` : ''}
-            <div class="q-detail"><span class="q-detail-label q-detail-blue">参考：</span>${q.referenceTips}</div>
+            <div class="q-text">${esc(q.question)}</div>
+            <div class="q-answer">${esc(q.answerSummary)}</div>
+            ${q.highlights.length ? `<div class="q-detail"><span class="q-detail-label q-detail-green">亮点：</span>${esc(q.highlights.join('；'))}</div>` : ''}
+            ${q.weaknesses.length ? `<div class="q-detail"><span class="q-detail-label q-detail-red">不足：</span>${esc(q.weaknesses.join('；'))}</div>` : ''}
+            <div class="q-detail"><span class="q-detail-label q-detail-blue">参考：</span>${esc(q.referenceTips)}</div>
           </div>
         `).join('')}
       </div>
@@ -162,11 +173,11 @@ export function generateInterviewReportHtml(report: InterviewReport, session: In
       const pc = priorityColors[item.priority] || priorityColors.medium;
       return `
         <div class="imp-item">
-          <span class="imp-badge" style="background:${pc.bg};color:${pc.text};">${priorityLabels[item.priority] || item.priority}</span>
+          <span class="imp-badge" style="background:${pc.bg};color:${pc.text};">${esc(priorityLabels[item.priority] || item.priority)}</span>
           <div class="imp-content">
-            <div class="imp-area">${item.area}</div>
-            <div class="imp-desc">${item.description}</div>
-            ${item.resources.length ? `<div class="imp-resources">推荐资源：${item.resources.join('；')}</div>` : ''}
+            <div class="imp-area">${esc(item.area)}</div>
+            <div class="imp-desc">${esc(item.description)}</div>
+            ${item.resources.length ? `<div class="imp-resources">推荐资源：${esc(item.resources.join('；'))}</div>` : ''}
           </div>
         </div>
       `;
